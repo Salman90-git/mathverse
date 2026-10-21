@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equation Solver · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* Mode tabs */
+    .mode-tab {
+      flex: 1;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+      text-align: center;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      color: var(--text-secondary);
+      background: transparent;
+    }
+    .mode-tab.active {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-indigo));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(168,85,247,0.35);
+    }
+    .mode-tab:not(.active):hover {
+      border-color: var(--glass-border);
+      color: var(--text-primary);
+    }
+
+    /* Step list */
+    .step-list { display: flex; flex-direction: column; gap: 0.65rem; }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.65rem 0.875rem;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.5);
+      border: 1px solid var(--glass-border);
+      animation: fadeInUp 0.3s ease forwards;
+      opacity: 0;
+    }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-indigo));
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-text {
+      font-size: 0.88rem;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+    .step-text code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(99,102,241,0.12);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    /* Result boxes */
+    .result-box {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .result-real   { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.4);  color: #4ade80; }
+    .result-double { background: rgba(234,179,8,0.1);  border-color: rgba(234,179,8,0.4);  color: #facc15; }
+    .result-complex{ background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.4);  color: #f87171; }
+    .result-linear { background: rgba(6,182,212,0.1);  border-color: rgba(6,182,212,0.4);  color: #22d3ee; }
+
+    /* Canvas parabola */
+    #parabolaCanvas {
+      display: block;
+      width: 100%;
+      border-radius: 10px;
+      background: #050d1a;
+    }
+
+    /* Number input styling */
+    .coeff-input {
+      width: 80px;
+      text-align: center;
+    }
+
+    /* Formula display */
+    .formula-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      background: rgba(15,23,42,0.5);
+      border: 1px solid var(--glass-border);
+      text-align: center;
+      color: var(--text-primary);
+      letter-spacing: 0.03em;
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes fadeInUp {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .step-item:nth-child(1) { animation-delay: 0.05s; }
+    .step-item:nth-child(2) { animation-delay: 0.12s; }
+    .step-item:nth-child(3) { animation-delay: 0.19s; }
+    .step-item:nth-child(4) { animation-delay: 0.26s; }
+    .step-item:nth-child(5) { animation-delay: 0.33s; }
+    .step-item:nth-child(6) { animation-delay: 0.40s; }
+    .step-item:nth-child(7) { animation-delay: 0.47s; }
+    .step-item:nth-child(8) { animation-delay: 0.54s; }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Page Header -->
+    <div class="mb-6">
+      <span class="badge badge-purple mb-3">Interactive Tool</span>
+      <h1 class="section-title gradient-text">Equation Solver</h1>
+      <p class="section-subtitle">Solve linear and quadratic equations with detailed step-by-step solutions.</p>
+    </div>
+
+    <div class="flex flex-col gap-6 lg:flex-row">
+
+      <!-- Left Panel: Input -->
+      <div class="flex flex-col gap-5" style="width:100%;max-width:380px;flex-shrink:0;">
+
+        <!-- Mode Tabs -->
+        <div class="glass-card p-2">
+          <div class="flex gap-2" role="tablist" aria-label="Equation mode">
+            <button id="tabLinear"    class="mode-tab active" role="tab" aria-selected="true"  aria-controls="panelLinear">Linear</button>
+            <button id="tabQuadratic" class="mode-tab"        role="tab" aria-selected="false" aria-controls="panelQuadratic">Quadratic</button>
+          </div>
+        </div>
+
+        <!-- Linear Panel -->
+        <div id="panelLinear" class="glass-card p-5 flex flex-col gap-4" role="tabpanel" aria-labelledby="tabLinear">
+          <div>
+            <p class="text-sm font-semibold mb-1" style="color:var(--text-secondary);">Solve for x:</p>
+            <div class="formula-display" id="linearFormula">ax + b = c</div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="flex flex-col items-center gap-1">
+              <label for="linA" class="text-xs font-semibold" style="color:var(--text-muted);">a</label>
+              <input id="linA" type="number" class="input coeff-input" value="2" aria-label="Coefficient a" />
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <label for="linB" class="text-xs font-semibold" style="color:var(--text-muted);">b</label>
+              <input id="linB" type="number" class="input coeff-input" value="3" aria-label="Coefficient b" />
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <label for="linC" class="text-xs font-semibold" style="color:var(--text-muted);">c</label>
+              <input id="linC" type="number" class="input coeff-input" value="7" aria-label="Right-hand side c" />
+            </div>
+          </div>
+
+          <button id="solveLinear" class="btn btn-primary justify-center" aria-label="Solve linear equation">
+            Solve Linear Equation
+          </button>
+        </div>
+
+        <!-- Quadratic Panel -->
+        <div id="panelQuadratic" class="glass-card p-5 flex flex-col gap-4 hidden" role="tabpanel" aria-labelledby="tabQuadratic">
+          <div>
+            <p class="text-sm font-semibold mb-1" style="color:var(--text-secondary);">Solve for x:</p>
+            <div class="formula-display" id="quadFormula">ax² + bx + c = 0</div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="flex flex-col items-center gap-1">
+              <label for="quadA" class="text-xs font-semibold" style="color:var(--text-muted);">a</label>
+              <input id="quadA" type="number" class="input coeff-input" value="1" aria-label="Coefficient a" />
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <label for="quadB" class="text-xs font-semibold" style="color:var(--text-muted);">b</label>
+              <input id="quadB" type="number" class="input coeff-input" value="-3" aria-label="Coefficient b" />
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <label for="quadC" class="text-xs font-semibold" style="color:var(--text-muted);">c</label>
+              <input id="quadC" type="number" class="input coeff-input" value="2" aria-label="Coefficient c" />
+            </div>
+          </div>
+
+          <button id="solveQuad" class="btn btn-primary justify-center" aria-label="Solve quadratic equation">
+            Solve Quadratic Equation
+          </button>
+
+          <!-- Parabola canvas -->
+          <div>
+            <p class="text-xs font-semibold mb-2" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Parabola Preview</p>
+            <canvas id="parabolaCanvas" height="200" aria-label="Parabola graph preview"></canvas>
+          </div>
+        </div>
+
+        <!-- Reference Card -->
+        <div class="glass-card p-4 text-xs" style="color:var(--text-muted);">
+          <p class="font-semibold mb-1" style="color:var(--text-secondary);">Quadratic Formula</p>
+          <p class="font-mono mb-2">x = (-b ± √(b²−4ac)) / 2a</p>
+          <p class="font-semibold mb-1" style="color:var(--text-secondary);">Discriminant Δ = b²−4ac</p>
+          <ul class="flex flex-col gap-1 mt-1">
+            <li><span style="color:#4ade80;">Δ &gt; 0</span> → 2 distinct real roots</li>
+            <li><span style="color:#facc15;">Δ = 0</span> → 1 repeated real root</li>
+            <li><span style="color:#f87171;">Δ &lt; 0</span> → 2 complex roots</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Right Panel: Solution -->
+      <div class="flex-1 flex flex-col gap-4">
+        <div id="solutionPanel" class="glass-card p-6 flex flex-col gap-4 flex-1" style="min-height:420px;">
+
+          <!-- Empty state -->
+          <div id="emptyState" class="flex flex-col items-center justify-center flex-1 gap-3" style="opacity:0.45;">
+            <div style="font-size:3rem;">🔢</div>
+            <p class="text-center text-sm" style="color:var(--text-secondary);">Enter coefficients and click <strong>Solve</strong> to see step-by-step solution.</p>
+          </div>
+
+          <!-- Solution content (hidden until solved) -->
+          <div id="solutionContent" class="hidden flex flex-col gap-5">
+
+            <div class="flex items-center justify-between">
+              <h2 class="text-base font-bold" style="color:var(--text-primary);">Step-by-Step Solution</h2>
+              <span id="solutionBadge" class="badge"></span>
+            </div>
+
+            <div id="equationDisplay" class="formula-display" style="font-size:1.15rem;"></div>
+
+            <div>
+              <p class="text-xs font-semibold mb-3" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Steps</p>
+              <ol id="stepList" class="step-list" aria-label="Solution steps"></ol>
+            </div>
+
+            <div id="resultArea" class="flex flex-col gap-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    // ─── DOM refs ─────────────────────────────────────────────────
+    const tabLinear    = document.getElementById('tabLinear');
+    const tabQuadratic = document.getElementById('tabQuadratic');
+    const panelLinear  = document.getElementById('panelLinear');
+    const panelQuad    = document.getElementById('panelQuadratic');
+
+    const linA = /** @type {HTMLInputElement} */ (document.getElementById('linA'));
+    const linB = /** @type {HTMLInputElement} */ (document.getElementById('linB'));
+    const linC = /** @type {HTMLInputElement} */ (document.getElementById('linC'));
+
+    const quadA = /** @type {HTMLInputElement} */ (document.getElementById('quadA'));
+    const quadB = /** @type {HTMLInputElement} */ (document.getElementById('quadB'));
+    const quadC = /** @type {HTMLInputElement} */ (document.getElementById('quadC'));
+
+    const emptyState     = document.getElementById('emptyState');
+    const solutionContent= document.getElementById('solutionContent');
+    const stepList       = document.getElementById('stepList');
+    const resultArea     = document.getElementById('resultArea');
+    const solutionBadge  = document.getElementById('solutionBadge');
+    const equationDisplay= document.getElementById('equationDisplay');
+
+    const parabolaCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('parabolaCanvas'));
+    const pCtx = parabolaCanvas.getContext('2d');
+
+    let currentMode = 'linear';
+
+    // ─── Helpers ──────────────────────────────────────────────────
+    function fmt(n) {
+      if (Number.isInteger(n)) return String(n);
+      return parseFloat(n.toFixed(6)).toString();
+    }
+
+    function sign(n) { return n >= 0 ? '+' : '−'; }
+
+    function fmtCoeff(n, variable, isFirst = false) {
+      if (n === 0) return '';
+      const abs = Math.abs(n);
+      const s = n < 0 ? '−' : (isFirst ? '' : '+');
+      const space = isFirst ? '' : ' ';
+      if (abs === 1) return `${space}${s} ${variable}`;
+      return `${space}${s} ${fmt(abs)}${variable}`;
+    }
+
+    function buildLinearEquation(a, b, c) {
+      let lhs = '';
+      lhs += fmtCoeff(a, 'x', true) || '0';
+      if (b !== 0) lhs += ` ${sign(b)} ${fmt(Math.abs(b))}`;
+      return `${lhs} = ${fmt(c)}`;
+    }
+
+    function buildQuadEquation(a, b, c) {
+      let s = fmtCoeff(a, 'x²', true) || '0';
+      if (b !== 0) s += ` ${sign(b)} ${fmt(Math.abs(b))}x`;
+      if (c !== 0) s += ` ${sign(c)} ${fmt(Math.abs(c))}`;
+      return `${s} = 0`;
+    }
+
+    // ─── Tab switching ────────────────────────────────────────────
+    function switchMode(mode) {
+      currentMode = mode;
+      const isLinear = mode === 'linear';
+
+      tabLinear.classList.toggle('active', isLinear);
+      tabQuadratic.classList.toggle('active', !isLinear);
+      tabLinear.setAttribute('aria-selected', String(isLinear));
+      tabQuadratic.setAttribute('aria-selected', String(!isLinear));
+
+      panelLinear.classList.toggle('hidden', !isLinear);
+      panelQuad.classList.toggle('hidden', isLinear);
+
+      // Reset solution
+      emptyState.classList.remove('hidden');
+      solutionContent.classList.add('hidden');
+    }
+
+    tabLinear.addEventListener('click',    () => switchMode('linear'));
+    tabQuadratic.addEventListener('click', () => switchMode('quadratic'));
+
+    // ─── Render steps ─────────────────────────────────────────────
+    function renderSteps(steps) {
+      stepList.innerHTML = '';
+      steps.forEach((text, i) => {
+        const li = document.createElement('li');
+        li.className = 'step-item';
+        li.innerHTML = `
+          <div class="step-num" aria-hidden="true">${i + 1}</div>
+          <div class="step-text">${text}</div>
+        `;
+        stepList.appendChild(li);
+      });
+    }
+
+    function renderResults(results) {
+      resultArea.innerHTML = '';
+      results.forEach(({ label, value, type }) => {
+        const div = document.createElement('div');
+        div.className = `result-box result-${type}`;
+        div.innerHTML = `<span style="opacity:0.7;font-size:0.8em;">${label}: </span>${value}`;
+        resultArea.appendChild(div);
+      });
+    }
+
+    function showSolution(eq, badge, badgeClass, steps, results) {
+      emptyState.classList.add('hidden');
+      solutionContent.classList.remove('hidden');
+
+      equationDisplay.textContent = eq;
+      solutionBadge.textContent = badge;
+      solutionBadge.className = `badge ${badgeClass}`;
+
+      renderSteps(steps);
+      renderResults(results);
+    }
+
+    // ─── Linear Solver ────────────────────────────────────────────
+    function solveLinear() {
+      const a = parseFloat(linA.value);
+      const b = parseFloat(linB.value);
+      const c = parseFloat(linC.value);
+
+      if (isNaN(a) || isNaN(b) || isNaN(c)) return;
+
+      const eq = buildLinearEquation(a, b, c);
+
+      if (a === 0) {
+        // Degenerate case
+        if (b === c) {
+          const steps = [
+            `Start with: <code>${eq}</code>`,
+            `Since <code>a = 0</code>, the equation reduces to: <code>${fmt(b)} = ${fmt(c)}</code>`,
+            `This is always <strong>true</strong> — every real number satisfies the equation.`,
+          ];
+          showSolution(eq, 'Infinite Solutions', 'badge-cyan', steps, [
+            { label: 'Result', value: 'x ∈ ℝ  (any real number)', type: 'real' },
+          ]);
+        } else {
+          const steps = [
+            `Start with: <code>${eq}</code>`,
+            `Since <code>a = 0</code>, the equation reduces to: <code>${fmt(b)} = ${fmt(c)}</code>`,
+            `This is always <strong>false</strong> — no value of x satisfies the equation.`,
+          ];
+          showSolution(eq, 'No Solution', 'badge-purple', steps, [
+            { label: 'Result', value: 'No solution (contradiction)', type: 'complex' },
+          ]);
+        }
+        return;
+      }
+
+      const rhs = c - b;
+      const x = rhs / a;
+
+      const steps = [
+        `Start with the equation: <code>${eq}</code>`,
+        `Subtract <code>${fmt(b)}</code> from both sides:<br><code>${fmtCoeff(a,'x',true) || '0'} = ${fmt(c)} − (${fmt(b)}) = ${fmt(rhs)}</code>`,
+        `Divide both sides by <code>${fmt(a)}</code>:<br><code>x = ${fmt(rhs)} ÷ ${fmt(a)}</code>`,
+        `Simplify: <code>x = ${fmt(x)}</code>`,
+        `Verification: <code>${fmt(a)}(${fmt(x)}) + ${fmt(b)} = ${fmt(a * x + b)} = ${fmt(c)} ✓</code>`,
+      ];
+
+      showSolution(eq, 'Linear · 1 Solution', 'badge-cyan', steps, [
+        { label: 'x', value: fmt(x), type: 'linear' },
+      ]);
+    }
+
+    // ─── Quadratic Solver ─────────────────────────────────────────
+    function solveQuadratic() {
+      const a = parseFloat(quadA.value);
+      const b = parseFloat(quadB.value);
+      const c = parseFloat(quadC.value);
+
+      if (isNaN(a) || isNaN(b) || isNaN(c)) return;
+
+      const eq = buildQuadEquation(a, b, c);
+
+      if (a === 0) {
+        // Fallback to linear
+        const steps = [
+          `Start with: <code>${eq}</code>`,
+          `Since <code>a = 0</code>, this reduces to the linear equation: <code>${fmtCoeff(b,'x',true) || '0'} + ${fmt(c)} = 0</code>`,
+          `Solve for x: <code>x = ${fmt(-c / b)}</code>`,
+        ];
+        showSolution(eq, 'Reduced to Linear', 'badge-indigo', steps, [
+          { label: 'x', value: fmt(-c / b), type: 'linear' },
+        ]);
+        drawParabola(a, b, c);
+        return;
+      }
+
+      const discriminant = b * b - 4 * a * c;
+      const sqrtDisc = Math.sqrt(Math.abs(discriminant));
+      const twoA = 2 * a;
+
+      const steps = [
+        `Start with: <code>${eq}</code>`,
+        `Identify coefficients: <code>a = ${fmt(a)}, b = ${fmt(b)}, c = ${fmt(c)}</code>`,
+        `Compute the discriminant: <code>Δ = b² − 4ac = (${fmt(b)})² − 4(${fmt(a)})(${fmt(c)}) = ${fmt(b*b)} − ${fmt(4*a*c)} = ${fmt(discriminant)}</code>`,
+      ];
+
+      let results = [];
+
+      if (discriminant > 0) {
+        const x1 = (-b + sqrtDisc) / twoA;
+        const x2 = (-b - sqrtDisc) / twoA;
+        steps.push(
+          `Since <code>Δ = ${fmt(discriminant)} &gt; 0</code>, there are <strong>two distinct real roots</strong>.`,
+          `Apply quadratic formula: <code>x = (−b ± √Δ) / 2a = (−(${fmt(b)}) ± √${fmt(discriminant)}) / (2 × ${fmt(a)})</code>`,
+          `Compute √Δ: <code>√${fmt(discriminant)} ≈ ${fmt(sqrtDisc)}</code>`,
+          `Root 1: <code>x₁ = (${fmt(-b)} + ${fmt(sqrtDisc)}) / ${fmt(twoA)} = ${fmt(x1)}</code>`,
+          `Root 2: <code>x₂ = (${fmt(-b)} − ${fmt(sqrtDisc)}) / ${fmt(twoA)} = ${fmt(x2)}</code>`,
+        );
+        results = [
+          { label: 'x₁', value: fmt(x1), type: 'real' },
+          { label: 'x₂', value: fmt(x2), type: 'real' },
+        ];
+        showSolution(eq, 'Δ > 0 · 2 Real Roots', 'badge-cyan', steps, results);
+
+      } else if (discriminant === 0) {
+        const x = -b / twoA;
+        steps.push(
+          `Since <code>Δ = 0</code>, there is <strong>one repeated real root</strong>.`,
+          `Apply quadratic formula: <code>x = −b / 2a = −(${fmt(b)}) / (2 × ${fmt(a)})</code>`,
+          `Root: <code>x = ${fmt(-b)} / ${fmt(twoA)} = ${fmt(x)}</code>`,
+        );
+        results = [
+          { label: 'x₁ = x₂', value: fmt(x), type: 'double' },
+        ];
+        showSolution(eq, 'Δ = 0 · Double Root', 'badge-purple', steps, results);
+
+      } else {
+        // Complex roots
+        const realPart = -b / twoA;
+        const imagPart = sqrtDisc / twoA;
+        steps.push(
+          `Since <code>Δ = ${fmt(discriminant)} &lt; 0</code>, there are <strong>two complex conjugate roots</strong>.`,
+          `Apply quadratic formula: <code>x = (−b ± i√|Δ|) / 2a</code>`,
+          `Compute √|Δ|: <code>√${fmt(Math.abs(discriminant))} ≈ ${fmt(sqrtDisc)}</code>`,
+          `Root 1: <code>x₁ = ${fmt(realPart)} + ${fmt(imagPart)}i</code>`,
+          `Root 2: <code>x₂ = ${fmt(realPart)} − ${fmt(imagPart)}i</code>`,
+        );
+        results = [
+          { label: 'x₁', value: `${fmt(realPart)} + ${fmt(imagPart)}i`, type: 'complex' },
+          { label: 'x₂', value: `${fmt(realPart)} − ${fmt(imagPart)}i`, type: 'complex' },
+        ];
+        showSolution(eq, 'Δ < 0 · Complex Roots', 'badge-purple', steps, results);
+      }
+
+      drawParabola(a, b, c);
+    }
+
+    // ─── Parabola Canvas ──────────────────────────────────────────
+    function drawParabola(a, b, c) {
+      const W = parabolaCanvas.width  = parabolaCanvas.offsetWidth;
+      const H = parabolaCanvas.height = 200;
+      if (!W || !H) return;
+
+      pCtx.clearRect(0, 0, W, H);
+      pCtx.fillStyle = '#050d1a';
+      pCtx.fillRect(0, 0, W, H);
+
+      // Find vertex
+      const vx = (a !== 0) ? -b / (2 * a) : 0;
+      const vy = a * vx * vx + b * vx + c;
+
+      // Determine view range
+      const padding = 3;
+      const xSpan = Math.max(4, Math.abs(vx) + padding + 3);
+      const xMin = vx - xSpan;
+      const xMax = vx + xSpan;
+
+      // Sample y values to determine y range
+      const samples = 80;
+      const ys = [];
+      for (let i = 0; i <= samples; i++) {
+        const x = xMin + (i / samples) * (xMax - xMin);
+        ys.push(a * x * x + b * x + c);
+      }
+      const rawYMin = Math.min(...ys);
+      const rawYMax = Math.max(...ys);
+      const yPad = Math.max(1, (rawYMax - rawYMin) * 0.2);
+      const yMin = rawYMin - yPad;
+      const yMax = rawYMax + yPad;
+
+      const toCanvas = (mx, my) => ({
+        cx: ((mx - xMin) / (xMax - xMin)) * W,
+        cy: H - ((my - yMin) / (yMax - yMin)) * H,
+      });
+
+      // Grid
+      pCtx.save();
+      pCtx.strokeStyle = 'rgba(99,102,241,0.12)';
+      pCtx.lineWidth = 1;
+      pCtx.beginPath();
+      const { cx: ox, cy: oy } = toCanvas(0, 0);
+      pCtx.moveTo(ox, 0); pCtx.lineTo(ox, H);
+      pCtx.moveTo(0, oy); pCtx.lineTo(W, oy);
+      pCtx.strokeStyle = 'rgba(148,163,184,0.3)';
+      pCtx.stroke();
+      pCtx.restore();
+
+      // Parabola
+      pCtx.save();
+      pCtx.strokeStyle = '#a855f7';
+      pCtx.lineWidth = 2.5;
+      pCtx.shadowColor = '#a855f7';
+      pCtx.shadowBlur = 6;
+      pCtx.beginPath();
+
+      let first = true;
+      for (let i = 0; i <= samples; i++) {
+        const mx = xMin + (i / samples) * (xMax - xMin);
+        const my = a * mx * mx + b * mx + c;
+        if (!isFinite(my)) { first = true; continue; }
+        const { cx, cy } = toCanvas(mx, my);
+        if (first) { pCtx.moveTo(cx, cy); first = false; }
+        else pCtx.lineTo(cx, cy);
+      }
+      pCtx.stroke();
+      pCtx.restore();
+
+      // Vertex dot
+      const { cx: vcx, cy: vcy } = toCanvas(vx, vy);
+      pCtx.save();
+      pCtx.fillStyle = '#06b6d4';
+      pCtx.shadowColor = '#06b6d4';
+      pCtx.shadowBlur = 8;
+      pCtx.beginPath();
+      pCtx.arc(vcx, vcy, 5, 0, Math.PI * 2);
+      pCtx.fill();
+      pCtx.restore();
+
+      // Vertex label
+      pCtx.save();
+      pCtx.fillStyle = 'rgba(6,182,212,0.9)';
+      pCtx.font = '10px JetBrains Mono, monospace';
+      pCtx.textAlign = vcx < W * 0.7 ? 'left' : 'right';
+      pCtx.textBaseline = a > 0 ? 'bottom' : 'top';
+      pCtx.fillText(`V(${fmt(vx)}, ${fmt(vy)})`, vcx + (vcx < W*0.7 ? 8 : -8), vcy + (a > 0 ? -6 : 6));
+      pCtx.restore();
+
+      // x-intercept markers (real roots only)
+      const disc = b * b - 4 * a * c;
+      if (disc >= 0 && a !== 0) {
+        const sqrtD = Math.sqrt(disc);
+        const r1 = (-b + sqrtD) / (2 * a);
+        const r2 = (-b - sqrtD) / (2 * a);
+        [r1, r2].forEach(r => {
+          const { cx: rcx, cy: rcy } = toCanvas(r, 0);
+          if (rcx < 0 || rcx > W) return;
+          pCtx.save();
+          pCtx.fillStyle = '#22c55e';
+          pCtx.shadowColor = '#22c55e';
+          pCtx.shadowBlur = 8;
+          pCtx.beginPath();
+          pCtx.arc(rcx, rcy, 4, 0, Math.PI * 2);
+          pCtx.fill();
+          pCtx.restore();
+        });
+      }
+    }
+
+    // ─── Event Listeners ──────────────────────────────────────────
+    document.getElementById('solveLinear').addEventListener('click', solveLinear);
+    document.getElementById('solveQuad').addEventListener('click',   solveQuadratic);
+
+    // Live preview of formula display
+    function updateLinearFormula() {
+      const a = parseFloat(linA.value) || 0;
+      const b = parseFloat(linB.value) || 0;
+      const c = parseFloat(linC.value) || 0;
+      document.getElementById('linearFormula').textContent = buildLinearEquation(a, b, c);
+    }
+
+    function updateQuadFormula() {
+      const a = parseFloat(quadA.value) || 0;
+      const b = parseFloat(quadB.value) || 0;
+      const c = parseFloat(quadC.value) || 0;
+      document.getElementById('quadFormula').textContent = buildQuadEquation(a, b, c);
+    }
+
+    [linA, linB, linC].forEach(el => el.addEventListener('input', updateLinearFormula));
+    [quadA, quadB, quadC].forEach(el => {
+      el.addEventListener('input', () => {
+        updateQuadFormula();
+        // Live parabola redraw
+        const a = parseFloat(quadA.value) || 0;
+        const b = parseFloat(quadB.value) || 0;
+        const c = parseFloat(quadC.value) || 0;
+        drawParabola(a, b, c);
+      });
+    });
+
+    // Enter key support
+    [linA, linB, linC].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') solveLinear(); }));
+    [quadA, quadB, quadC].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') solveQuadratic(); }));
+
+    // ─── Bootstrap ────────────────────────────────────────────────
+    updateLinearFormula();
+    updateQuadFormula();
+
+    // Draw initial parabola preview
+    requestAnimationFrame(() => {
+      drawParabola(
+        parseFloat(quadA.value) || 0,
+        parseFloat(quadB.value) || 0,
+        parseFloat(quadC.value) || 0
+      );
+    });
+  </script>
+</body>
+</html>

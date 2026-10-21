@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MathVerse – An interactive math learning hub with graph plotter, matrix calculator, probability simulator, and more." />
+  <title>MathVerse · Interactive Math Learning Hub</title>
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Preconnect for Google Fonts (already imported in CSS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body class="page-wrapper">
+
+  <!-- ── Navbar & Footer injected by main.js ── -->
+
+  <!-- ── Hero Section ──────────────────────────────────────────── -->
+  <main id="main-content">
+    <section class="hero-section" aria-labelledby="hero-heading">
+      <div style="max-width:800px;margin:0 auto;position:relative;z-index:1;">
+        <div class="badge badge-purple" style="margin-bottom:1.25rem;">
+          🎓 University Web Engineering Project
+        </div>
+
+        <h1 id="hero-heading" class="hero-title">
+          <span class="gradient-text">MathVerse</span><br />
+          Interactive Math Learning Hub
+        </h1>
+
+        <p class="hero-subtitle">
+          Explore mathematics through interactive tools — graph functions,
+          solve equations, simulate probability, visualize fractals, and more.
+        </p>
+
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+          <a href="pages/quiz.html" class="btn btn-primary" aria-label="Start the Quiz Arena">
+            🎯 Start Quiz
+          </a>
+          <a href="pages/graph.html" class="btn btn-secondary" aria-label="Open Graph Plotter">
+            📈 Plot Graphs
+          </a>
+          <a href="pages/dashboard.html" class="btn btn-outline" aria-label="View your progress dashboard">
+            📊 My Progress
+          </a>
+        </div>
+      </div>
+
+      <!-- Floating math symbols (decorative) -->
+      <div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+        <span class="float font-mono" style="position:absolute;top:15%;left:8%;font-size:2rem;opacity:0.08;animation-delay:0s;">∫</span>
+        <span class="float font-mono" style="position:absolute;top:30%;right:10%;font-size:1.8rem;opacity:0.08;animation-delay:1s;">π</span>
+        <span class="float font-mono" style="position:absolute;bottom:25%;left:15%;font-size:1.5rem;opacity:0.08;animation-delay:2s;">Σ</span>
+        <span class="float font-mono" style="position:absolute;bottom:20%;right:18%;font-size:2.2rem;opacity:0.08;animation-delay:0.5s;">√</span>
+        <span class="float font-mono" style="position:absolute;top:55%;left:5%;font-size:1.3rem;opacity:0.06;animation-delay:1.5s;">∞</span>
+        <span class="float font-mono" style="position:absolute;top:10%;right:30%;font-size:1.6rem;opacity:0.06;animation-delay:2.5s;">∂</span>
+      </div>
+    </section>
+
+    <!-- ── Page Content ──────────────────────────────────────────── -->
+    <div class="page-content">
+
+      <!-- Math Fact of the Day -->
+      <section aria-labelledby="fact-heading" style="margin-bottom:3rem;">
+        <div class="fact-card fade-in-up">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <p class="badge badge-cyan" style="margin-bottom:0.75rem;">✨ Math Fact of the Day</p>
+              <h2 id="fact-heading" id="fact-title" style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);"></h2>
+              <p id="fact-body" style="color:var(--text-secondary);font-size:0.95rem;line-height:1.7;"></p>
+            </div>
+            <button id="new-fact-btn" class="btn btn-outline" style="flex-shrink:0;" aria-label="Show a different math fact">
+              🔄 New Fact
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress Summary -->
+      <section aria-labelledby="progress-heading" style="margin-bottom:3rem;" id="progress-section">
+        <h2 id="progress-heading" class="section-title" style="font-size:1.25rem;margin-bottom:1rem;">📊 Your Progress</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;" id="progress-cards">
+          <!-- Injected by JS -->
+        </div>
+      </section>
+
+      <!-- Tool Cards Grid -->
+      <section aria-labelledby="tools-heading">
+        <h2 id="tools-heading" class="section-title">🧰 Explore Tools</h2>
+        <p class="section-subtitle">Click any tool to start learning interactively.</p>
+
+        <div class="grid-cols-auto" id="tools-grid" role="list">
+          <!-- Injected by JS -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script type="module">
+    import './js/main.js';
+    import { storageGet, KEYS } from './js/storage.js';
+
+    // ── Math Facts ─────────────────────────────────────────────
+    /** @type {{ title: string, body: string }[]} */
+    const MATH_FACTS = [
+      { title: "Zero is neither positive nor negative",
+        body: "Zero is the only number that is neither positive nor negative. It sits at the exact center of the number line and is the additive identity." },
+      { title: "The Golden Ratio φ ≈ 1.618",
+        body: "The golden ratio appears in nature (sunflower seeds, nautilus shells), art (the Parthenon), and is defined by φ = (1 + √5) / 2." },
+      { title: "There are infinitely many primes",
+        body: "Euclid proved around 300 BCE that no finite list can contain all prime numbers — the primes go on forever." },
+      { title: "A Möbius strip has only one side",
+        body: "If you take a strip of paper, give it a half-twist, and join the ends, you get a surface with only one side and one edge." },
+      { title: "e ≈ 2.71828… is transcendental",
+        body: "Euler's number e is irrational and transcendental. It is the base of natural logarithms and appears in compound interest, probability, and calculus." },
+      { title: "7 is the most commonly chosen 'random' number",
+        body: "When asked to pick a random number between 1 and 10, most people choose 7. Our brains are not great at being truly random." },
+      { title: "The sum of all angles in a triangle is 180°",
+        body: "This holds on a flat (Euclidean) plane. On a sphere it exceeds 180°; on a saddle surface it is less. Geometry depends on the space!" },
+      { title: "√2 is irrational",
+        body: "The ancient Greeks discovered (to their horror) that √2 cannot be expressed as a ratio of two integers — it is irrational." },
+      { title: "Pascal's Triangle encodes many patterns",
+        body: "The binomial coefficients, Fibonacci numbers, powers of 2, and triangular numbers all appear in Pascal's triangle." },
+      { title: "The Collatz Conjecture remains unsolved",
+        body: "Start with any positive integer. If even, halve it; if odd, multiply by 3 and add 1. The conjecture says you always reach 1 — but it has never been proved." },
+      { title: "Pi (π) is transcendental",
+        body: "π is not just irrational but transcendental, meaning it is not the root of any polynomial with rational coefficients. This proves squaring the circle is impossible." },
+      { title: "1 + 2 + 3 + … diverges, yet = -1/12?",
+        body: "Using Ramanujan summation or analytic continuation of the Riemann zeta function, mathematicians assign the value -1/12 to this divergent series — used in string theory!" },
+    ];
+
+    let factIndex = Math.floor(Math.random() * MATH_FACTS.length);
+
+    function showFact() {
+      const fact = MATH_FACTS[factIndex];
+      document.getElementById('fact-title').textContent = fact.title;
+      document.getElementById('fact-body').textContent = fact.body;
+    }
+
+    document.getElementById('new-fact-btn').addEventListener('click', () => {
+      factIndex = (factIndex + 1) % MATH_FACTS.length;
+      showFact();
+    });
+
+    showFact();
+
+    // ── Progress Summary ────────────────────────────────────────
+    function renderProgress() {
+      const scores = storageGet(KEYS.QUIZ_SCORES, []);
+      const streak = storageGet(KEYS.QUIZ_STREAK, 0);
+      const favs   = storageGet(KEYS.FAVORITES, []);
+
+      const quizCount = scores.length;
+      const avgScore  = quizCount
+        ? Math.round(scores.reduce((s, q) => s + q.pct, 0) / quizCount)
+        : 0;
+
+      const stats = [
+        { icon: '🎯', label: 'Quizzes Taken', value: quizCount },
+        { icon: '📈', label: 'Avg Score',     value: quizCount ? `${avgScore}%` : '—' },
+        { icon: '🔥', label: 'Day Streak',    value: `${streak} day${streak !== 1 ? 's' : ''}` },
+        { icon: '⭐', label: 'Saved Formulas', value: favs.length },
+      ];
+
+      const container = document.getElementById('progress-cards');
+      container.innerHTML = stats.map(s => `
+        <div class="glass-card" style="padding:1.25rem;text-align:center;">
+          <div style="font-size:1.8rem;margin-bottom:0.4rem;" aria-hidden="true">${s.icon}</div>
+          <div class="font-mono" style="font-size:1.4rem;font-weight:700;color:var(--accent-purple);">${s.value}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;">${s.label}</div>
+        </div>
+      `).join('');
+    }
+
+    renderProgress();
+
+    // ── Tool Cards ──────────────────────────────────────────────
+    /** @type {{ icon: string, bg: string, title: string, desc: string, href: string, badge?: string }[]} */
+    const TOOLS = [
+      { icon:'📈', bg:'rgba(99,102,241,0.15)',   title:'Graph Plotter',       desc:'Plot multiple functions simultaneously. Zoom, pan, and explore curves.',              href:'pages/graph.html',        badge:'Interactive' },
+      { icon:'🔢', bg:'rgba(168,85,247,0.15)',   title:'Matrix Calculator',   desc:'Add, multiply, invert matrices up to 4×4 with step-by-step working.',                 href:'pages/matrix.html',       badge:'Step-by-step' },
+      { icon:'🎲', bg:'rgba(6,182,212,0.15)',    title:'Probability Sim',     desc:'Simulate dice, coins, cards over 1000 trials. See the Law of Large Numbers live.',    href:'pages/probability.html',  badge:'Chart.js' },
+      { icon:'🔢', bg:'rgba(16,185,129,0.15)',   title:'Number Theory',       desc:'Prime checker, Sieve of Eratosthenes, GCD, Fibonacci, Collatz and more.',             href:'pages/number-theory.html',badge:'Animated' },
+      { icon:'📐', bg:'rgba(245,158,11,0.15)',   title:'Equation Solver',     desc:'Solve linear and quadratic equations with step-by-step discriminant working.',        href:'pages/equations.html',    badge:'Solver' },
+      { icon:'⚖️', bg:'rgba(239,68,68,0.15)',    title:'Unit Converter',      desc:'Convert length, weight, temperature, area, speed, and data sizes instantly.',         href:'pages/converter.html',    badge:'Live' },
+      { icon:'📚', bg:'rgba(139,92,246,0.15)',   title:'Formula Library',     desc:'30+ formulas rendered in LaTeX. Filter by category and save your favourites.',        href:'pages/formulas.html',     badge:'KaTeX' },
+      { icon:'🎯', bg:'rgba(236,72,153,0.15)',   title:'Quiz Arena',          desc:'MCQs across algebra, calculus, geometry and stats with timer and explanations.',      href:'pages/quiz.html',         badge:'Timed' },
+      { icon:'📊', bg:'rgba(34,197,94,0.15)',    title:'Progress Dashboard',  desc:'Track quizzes taken, scores, streaks and weak areas with beautiful charts.',          href:'pages/dashboard.html',    badge:'Analytics' },
+      { icon:'🌀', bg:'rgba(99,102,241,0.2)',    title:'Fractals',            desc:'Render Mandelbrot set and Sierpiński triangle on canvas with zoom.',                  href:'pages/fractals.html',     badge:'Bonus' },
+      { icon:'ℹ️', bg:'rgba(100,116,139,0.12)',  title:'About',               desc:'Learn about the project, its tech stack and the developer behind it.',                href:'pages/about.html',        badge:'' },
+      { icon:'✉️', bg:'rgba(100,116,139,0.12)',  title:'Contact',             desc:'Send a message to the developer. Validated form with friendly error messages.',       href:'pages/contact.html',      badge:'' },
+    ];
+
+    const grid = document.getElementById('tools-grid');
+    grid.innerHTML = TOOLS.map(t => `
+      <a href="${t.href}" class="tool-card" role="listitem" aria-label="Open ${t.title}">
+        <div class="tool-icon" style="background:${t.bg};" aria-hidden="true">${t.icon}</div>
+        <h3>${t.title}</h3>
+        ${t.badge ? `<div style="margin-bottom:0.5rem;"><span class="badge badge-indigo">${t.badge}</span></div>` : ''}
+        <p>${t.desc}</p>
+        <div class="card-arrow">Open tool <span aria-hidden="true">→</span></div>
+      </a>
+    `).join('');
+  </script>
+</body>
+</html>

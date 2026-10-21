@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progress Dashboard · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .stat-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(139,92,246,0.2);
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--color-purple, #a855f7), var(--color-cyan, #06b6d4));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+    }
+    .stat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .chart-container {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 1rem;
+      text-align: center;
+    }
+    .empty-emoji {
+      font-size: 5rem;
+      line-height: 1;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      font-size: 0.9rem;
+    }
+    .btn-danger:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+    #dashboard-content { display: none; }
+    #empty-state-view { display: none; }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Page header -->
+    <div style="margin-bottom:2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+      <div>
+        <h1 class="section-title" style="margin-bottom:0.25rem;">📊 Progress Dashboard</h1>
+        <p class="section-subtitle" style="margin:0;">Track your MathVerse learning journey</p>
+      </div>
+      <button id="reset-btn" class="btn-danger" aria-label="Reset all progress data">
+        🗑️ Reset All Progress
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state-view">
+      <div class="empty-state">
+        <div class="glass-card" style="max-width:420px; width:100%; padding:3rem; text-align:center;">
+          <div class="empty-emoji">🎯</div>
+          <h2 style="font-size:1.5rem; font-weight:700; margin:1rem 0 0.5rem; color:rgba(255,255,255,0.9);">No quiz data yet</h2>
+          <p style="color:rgba(255,255,255,0.55); margin-bottom:1.5rem; line-height:1.6;">
+            Complete your first quiz to start tracking your progress and see detailed statistics here.
+          </p>
+          <a href="quiz.html" class="btn btn-primary" style="display:inline-block;">
+            🚀 Take Your First Quiz
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main dashboard content -->
+    <div id="dashboard-content">
+
+      <!-- Stats Row -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:2rem;" role="region" aria-label="Summary statistics">
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total Quizzes Taken</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-value" id="stat-avg">0%</div>
+          <div class="stat-label">Average Score</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-value" id="stat-best">0%</div>
+          <div class="stat-label">Best Score</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-value" id="stat-streak">0</div>
+          <div class="stat-label">Current Streak (days)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-value" id="stat-weakest" style="font-size:1.1rem; padding-top:0.4rem;">—</div>
+          <div class="stat-label">Weakest Topic</div>
+        </div>
+      </div>
+
+      <!-- Charts Row 1: Line chart full width -->
+      <div class="chart-container" style="margin-bottom:1.5rem;" role="region" aria-label="Score trend chart">
+        <div class="chart-title">📉 Score Trend <span style="color:rgba(255,255,255,0.35); font-weight:400; font-size:0.85rem;">(last 10 quizzes)</span></div>
+        <div style="height:260px; position:relative;">
+          <canvas id="chart-trend" aria-label="Line chart showing score trend over last 10 quizzes"></canvas>
+        </div>
+      </div>
+
+      <!-- Charts Row 2: Doughnut + Bar side by side -->
+      <div style="display:grid; grid-template-columns:1fr 1.6fr; gap:1.5rem; margin-bottom:2.5rem;">
+        <div class="chart-container" role="region" aria-label="Topic distribution chart">
+          <div class="chart-title">🍩 Topic Distribution</div>
+          <div style="height:260px; position:relative; display:flex; align-items:center; justify-content:center;">
+            <canvas id="chart-donut" aria-label="Doughnut chart showing quiz count per topic"></canvas>
+          </div>
+        </div>
+        <div class="chart-container" role="region" aria-label="Average score by topic chart">
+          <div class="chart-title">📊 Average Score by Topic</div>
+          <div style="height:260px; position:relative;">
+            <canvas id="chart-bar" aria-label="Bar chart showing average score per topic"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent activity table -->
+      <div class="chart-container" style="margin-bottom:2rem;" role="region" aria-label="Recent quiz activity">
+        <div class="chart-title">🕐 Recent Quiz Activity</div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.9rem;" aria-label="Recent quizzes table">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                <th style="text-align:left; padding:0.6rem 0.75rem; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em;">#</th>
+                <th style="text-align:left; padding:0.6rem 0.75rem; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em;">Topic</th>
+                <th style="text-align:left; padding:0.6rem 0.75rem; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em;">Score</th>
+                <th style="text-align:left; padding:0.6rem 0.75rem; color:rgba(255,255,255,0.5); font-weight:600; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em;">Date</th>
+              </tr>
+            </thead>
+            <tbody id="recent-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /dashboard-content -->
+
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+    import { storageGet, storageSet, storageRemove, KEYS } from '../js/storage.js';
+
+    // ─── Palette ──────────────────────────────────────────────────────────────
+    const PURPLE  = 'rgba(168,85,247,1)';
+    const CYAN    = 'rgba(6,182,212,1)';
+    const PURPLE_T = 'rgba(168,85,247,0.15)';
+    const TOPIC_COLORS = [
+      'rgba(168,85,247,0.85)',
+      'rgba(6,182,212,0.85)',
+      'rgba(251,191,36,0.85)',
+      'rgba(52,211,153,0.85)',
+      'rgba(251,113,133,0.85)',
+      'rgba(99,102,241,0.85)',
+      'rgba(249,115,22,0.85)',
+      'rgba(20,184,166,0.85)',
+    ];
+
+    const CHART_DEFAULTS = {
+      color: 'rgba(255,255,255,0.7)',
+      borderColor: 'rgba(255,255,255,0.1)',
+    };
+
+    Chart.defaults.color = 'rgba(255,255,255,0.6)';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
+
+    // ─── Load data ────────────────────────────────────────────────────────────
+    const scores   = storageGet(KEYS.QUIZ_SCORES, []);  // [{topic, score, date, total, correct}]
+    const streak   = storageGet(KEYS.QUIZ_STREAK, 0);
+
+    function init() {
+      if (!scores || scores.length === 0) {
+        document.getElementById('empty-state-view').style.display = 'flex';
+        document.getElementById('reset-btn').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('dashboard-content').style.display = 'block';
+      renderStats();
+      renderTrendChart();
+      renderDonutChart();
+      renderBarChart();
+      renderRecentTable();
+    }
+
+    // ─── Stats cards ─────────────────────────────────────────────────────────
+    function renderStats() {
+      const pcts = scores.map(s => scorePct(s));
+
+      document.getElementById('stat-total').textContent = scores.length;
+      document.getElementById('stat-avg').textContent   = avg(pcts).toFixed(1) + '%';
+      document.getElementById('stat-best').textContent  = Math.max(...pcts).toFixed(1) + '%';
+      document.getElementById('stat-streak').textContent = streak;
+
+      // Weakest topic
+      const topicMap = buildTopicMap();
+      let weakTopic = '—', weakPct = Infinity;
+      for (const [topic, data] of Object.entries(topicMap)) {
+        const a = avg(data.pcts);
+        if (a < weakPct) { weakPct = a; weakTopic = topic; }
+      }
+      const el = document.getElementById('stat-weakest');
+      el.textContent = weakTopic === '—' ? '—' : weakTopic;
+      if (weakTopic !== '—') {
+        el.title = `Avg: ${weakPct.toFixed(1)}%`;
+      }
+    }
+
+    // ─── Trend chart ─────────────────────────────────────────────────────────
+    function renderTrendChart() {
+      const last10 = scores.slice(-10);
+      const labels  = last10.map((s, i) => s.date ? fmtDate(s.date) : `Quiz ${scores.length - last10.length + i + 1}`);
+      const data    = last10.map(s => scorePct(s));
+
+      new Chart(document.getElementById('chart-trend'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Score %',
+            data,
+            borderColor: PURPLE,
+            backgroundColor: PURPLE_T,
+            pointBackgroundColor: CYAN,
+            pointBorderColor: '#fff',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            tension: 0.35,
+            fill: true,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.parsed.y.toFixed(1)}%`,
+              },
+            },
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: {
+                callback: v => v + '%',
+                stepSize: 20,
+              },
+              grid: { color: 'rgba(255,255,255,0.06)' },
+            },
+            x: {
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { maxRotation: 35 },
+            },
+          },
+        },
+      });
+    }
+
+    // ─── Donut chart ──────────────────────────────────────────────────────────
+    function renderDonutChart() {
+      const topicMap = buildTopicMap();
+      const labels   = Object.keys(topicMap);
+      const data     = labels.map(t => topicMap[t].count);
+      const colors   = labels.map((_, i) => TOPIC_COLORS[i % TOPIC_COLORS.length]);
+
+      new Chart(document.getElementById('chart-donut'), {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors,
+            borderColor: 'rgba(15,23,42,0.8)',
+            borderWidth: 2,
+            hoverOffset: 10,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                padding: 10,
+                font: { size: 11 },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.parsed} quiz${ctx.parsed !== 1 ? 'zes' : ''}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // ─── Bar chart ────────────────────────────────────────────────────────────
+    function renderBarChart() {
+      const topicMap = buildTopicMap();
+      const labels   = Object.keys(topicMap);
+      const data     = labels.map(t => parseFloat(avg(topicMap[t].pcts).toFixed(1)));
+      const colors   = labels.map((_, i) => TOPIC_COLORS[i % TOPIC_COLORS.length]);
+
+      new Chart(document.getElementById('chart-bar'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Avg %',
+            data,
+            backgroundColor: colors,
+            borderColor:     colors.map(c => c.replace('0.85', '1')),
+            borderWidth: 1,
+            borderRadius: 6,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` Avg: ${ctx.parsed.y}%`,
+              },
+            },
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: { callback: v => v + '%', stepSize: 20 },
+              grid: { color: 'rgba(255,255,255,0.06)' },
+            },
+            x: {
+              grid: { display: false },
+              ticks: { maxRotation: 35, font: { size: 11 } },
+            },
+          },
+        },
+      });
+    }
+
+    // ─── Recent table ─────────────────────────────────────────────────────────
+    function renderRecentTable() {
+      const tbody  = document.getElementById('recent-table-body');
+      const recent = [...scores].reverse().slice(0, 10);
+
+      recent.forEach((s, i) => {
+        const pct  = scorePct(s).toFixed(1);
+        const color = pct >= 80 ? '#4ade80' : pct >= 60 ? '#facc15' : '#f87171';
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = ' 1px solid rgba(255,255,255,0.05)';
+        tr.innerHTML = `
+          <td style="padding:0.6rem 0.75rem; color:rgba(255,255,255,0.35);">${scores.length - i}</td>
+          <td style="padding:0.6rem 0.75rem; color:rgba(255,255,255,0.85);">${escHtml(s.topic || 'General')}</td>
+          <td style="padding:0.6rem 0.75rem; font-weight:700; color:${color};">${pct}%</td>
+          <td style="padding:0.6rem 0.75rem; color:rgba(255,255,255,0.45); font-size:0.8rem;">${s.date ? fmtDate(s.date) : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ─── Reset ────────────────────────────────────────────────────────────────
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      if (window.confirm('⚠️ This will permanently delete ALL your quiz progress, scores, and streak data.\n\nAre you sure you want to reset everything?')) {
+        storageRemove(KEYS.QUIZ_SCORES);
+        storageRemove(KEYS.QUIZ_STREAK);
+        storageRemove(KEYS.QUIZ_LAST_DATE);
+        storageRemove(KEYS.PROGRESS);
+        window.location.reload();
+      }
+    });
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+    function scorePct(s) {
+      if (typeof s.score === 'number' && s.score <= 1 && s.total == null) return s.score * 100;
+      if (s.total > 0) return (s.correct ?? s.score ?? 0) / s.total * 100;
+      if (typeof s.score === 'number') return s.score > 1 ? s.score : s.score * 100;
+      return 0;
+    }
+
+    function buildTopicMap() {
+      const map = {};
+      for (const s of scores) {
+        const t = s.topic || 'General';
+        if (!map[t]) map[t] = { count: 0, pcts: [] };
+        map[t].count++;
+        map[t].pcts.push(scorePct(s));
+      }
+      return map;
+    }
+
+    function avg(arr) {
+      if (!arr.length) return 0;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function fmtDate(iso) {
+      try {
+        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } catch { return iso; }
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>

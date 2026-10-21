@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fractals · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    canvas {
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      cursor: crosshair;
+      display: block;
+      width: 100%;
+    }
+    .fractal-info {
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 3px solid var(--accent-indigo);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .tab-btn {
+      padding: 0.6rem 1.5rem;
+      border-radius: 8px 8px 0 0;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    .tab-btn.active {
+      background: rgba(99, 102, 241, 0.18);
+      color: #a78bfa;
+      border-color: var(--glass-border);
+    }
+    .tab-btn:not(.active):hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    .fractal-canvas-wrap {
+      position: relative;
+      width: 100%;
+    }
+    #mandelbrot-progress {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      color: #a78bfa;
+      padding: 4px 16px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      display: none;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex: 1;
+      min-width: 200px;
+    }
+    .slider-wrap label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .slider-wrap input[type=range] {
+      flex: 1;
+      accent-color: #7c3aed;
+    }
+    .slider-val {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #a78bfa;
+      min-width: 2.5rem;
+      text-align: right;
+    }
+    .color-btn {
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid var(--glass-border);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    .color-btn.active, .color-btn:hover {
+      background: rgba(99, 102, 241, 0.22);
+      color: #a78bfa;
+      border-color: #7c3aed;
+    }
+    .math-block {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.88rem;
+      color: #67e8f9;
+      margin: 0.5rem 0;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Header -->
+    <section class="text-center mb-8 pt-4">
+      <div class="badge mb-3" style="display:inline-block;">✦ Fractal Explorer</div>
+      <h1 class="section-title gradient-text">Fractal Geometry</h1>
+      <p class="section-subtitle max-w-2xl mx-auto">
+        Explore the infinite complexity hidden in simple mathematical rules.
+        Zoom into the Mandelbrot set or watch the Sierpiński triangle emerge from recursive subdivision.
+      </p>
+    </section>
+
+    <!-- Tab Container -->
+    <div class="glass-card" style="padding: 0; overflow: visible;">
+      <!-- Tab Buttons -->
+      <div class="flex gap-1 px-4 pt-3" style="border-bottom: 1px solid var(--glass-border);">
+        <button class="tab-btn active" id="tab-mandelbrot" aria-controls="panel-mandelbrot" aria-selected="true" role="tab">
+          🌀 Mandelbrot Set
+        </button>
+        <button class="tab-btn" id="tab-sierpinski" aria-controls="panel-sierpinski" aria-selected="false" role="tab">
+          🔺 Sierpiński Triangle
+        </button>
+      </div>
+
+      <!-- Mandelbrot Panel -->
+      <div class="tab-panel active" id="panel-mandelbrot" role="tabpanel" aria-labelledby="tab-mandelbrot" style="padding: 1.5rem;">
+
+        <!-- Controls -->
+        <div class="glass-card mb-4" style="padding: 1rem;">
+          <div class="control-row">
+            <div class="slider-wrap">
+              <label for="mb-iter-slider">Max Iterations:</label>
+              <input type="range" id="mb-iter-slider" min="20" max="300" step="10" value="80" aria-label="Maximum iterations" />
+              <span class="slider-val" id="mb-iter-val">80</span>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button class="btn btn-secondary" id="mb-reset-btn" aria-label="Reset Mandelbrot view">↺ Reset View</button>
+              <button class="btn btn-primary" id="mb-render-btn" aria-label="Render Mandelbrot set">⚡ Render</button>
+            </div>
+          </div>
+          <p style="font-size:0.78rem; color: var(--text-secondary); margin-top:0.6rem;">
+            💡 Click on the canvas to zoom in (2×) centered on that point.
+          </p>
+        </div>
+
+        <!-- Canvas -->
+        <div class="fractal-canvas-wrap">
+          <canvas id="mandelbrot-canvas" height="480" aria-label="Mandelbrot set fractal visualization"></canvas>
+          <div id="mandelbrot-progress" role="status" aria-live="polite">Rendering…</div>
+        </div>
+
+        <!-- Info -->
+        <div class="fractal-info">
+          <strong style="color: var(--text-primary);">The Mandelbrot Set</strong> is defined on the complex plane.
+          For each point <em>c = a + bi</em>, we iterate the map
+          <div class="math-block">z₀ = 0,   zₙ₊₁ = zₙ² + c</div>
+          A point belongs to the set if the sequence <em>|zₙ|</em> never exceeds 2 (it remains bounded forever).
+          The boundary between bounded and unbounded points forms an infinitely intricate fractal. Zooming in
+          reveals ever-finer self-similar structures — seahorse valleys, elephant valleys, and mini-brots —
+          each hiding further complexity no matter how deep you go. Colors represent how quickly a point
+          escapes, producing smooth gradient halos around the set's edge.
+        </div>
+      </div>
+
+      <!-- Sierpiński Panel -->
+      <div class="tab-panel" id="panel-sierpinski" role="tabpanel" aria-labelledby="tab-sierpinski" style="padding: 1.5rem;">
+
+        <!-- Controls -->
+        <div class="glass-card mb-4" style="padding: 1rem;">
+          <div class="control-row">
+            <div class="slider-wrap">
+              <label for="sier-depth-slider">Recursion Depth:</label>
+              <input type="range" id="sier-depth-slider" min="0" max="8" step="1" value="5" aria-label="Recursion depth" />
+              <span class="slider-val" id="sier-depth-val">5</span>
+            </div>
+            <div class="flex gap-2 flex-wrap" role="group" aria-label="Color scheme">
+              <button class="color-btn active" id="sier-color-purple" aria-pressed="true">💜 Purple/Cyan</button>
+              <button class="color-btn" id="sier-color-rainbow" aria-pressed="false">🌈 Rainbow</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="fractal-canvas-wrap">
+          <canvas id="sierpinski-canvas" height="480" aria-label="Sierpiński triangle fractal visualization"></canvas>
+        </div>
+
+        <!-- Info -->
+        <div class="fractal-info">
+          <strong style="color: var(--text-primary);">The Sierpiński Triangle</strong> is a classic example of a
+          <em>self-similar</em> fractal. At each recursion step, the triangle is divided into four smaller
+          congruent triangles and the central one is removed — leaving three copies at half scale.
+          <div class="math-block">Fractal dimension = log(3) / log(2) ≈ 1.585</div>
+          This dimension, between 1 and 2, captures the idea that the Sierpiński triangle is "more than a line
+          but less than a filled area." After infinite recursion the total area is 0, yet the perimeter is
+          infinite — a hallmark of fractal geometry. The same pattern emerges in Pascal's triangle (odd entries),
+          cellular automata Rule 90, and many natural phenomena.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    // ─────────────────────────────────────────────
+    //  TAB SWITCHING
+    // ─────────────────────────────────────────────
+    const tabs = [
+      { btn: document.getElementById('tab-mandelbrot'), panel: document.getElementById('panel-mandelbrot') },
+      { btn: document.getElementById('tab-sierpinski'), panel: document.getElementById('panel-sierpinski') }
+    ];
+
+    tabs.forEach(({ btn, panel }, i) => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(({ btn: b, panel: p }) => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+          p.classList.remove('active');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        panel.classList.add('active');
+        if (i === 1 && !sierpinskiDrawn) drawSierpinski();
+      });
+    });
+
+    // ─────────────────────────────────────────────
+    //  MANDELBROT SET
+    // ─────────────────────────────────────────────
+    const mbCanvas = document.getElementById('mandelbrot-canvas');
+    const mbCtx = mbCanvas.getContext('2d');
+    const mbProgress = document.getElementById('mandelbrot-progress');
+    const mbIterSlider = document.getElementById('mb-iter-slider');
+    const mbIterVal = document.getElementById('mb-iter-val');
+    const mbResetBtn = document.getElementById('mb-reset-btn');
+    const mbRenderBtn = document.getElementById('mb-render-btn');
+
+    let mbView = { xMin: -2.5, xMax: 1.0, yMin: -1.25, yMax: 1.25 };
+    let mbMaxIter = 80;
+    let mbRenderHandle = null;
+    let mbRendering = false;
+
+    function resizeMbCanvas() {
+      const rect = mbCanvas.parentElement.getBoundingClientRect();
+      mbCanvas.width = Math.floor(rect.width) || 800;
+      mbCanvas.height = 480;
+    }
+
+    function mbHslToRgb(h, s, l) {
+      // h 0-360, s 0-1, l 0-1
+      s = s; l = l;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let r = 0, g = 0, b = 0;
+      if (h < 60)       { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else              { r = c; g = 0; b = x; }
+      return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+    }
+
+    function renderMandelbrot() {
+      if (mbRenderHandle !== null) clearTimeout(mbRenderHandle);
+      mbRendering = true;
+      mbProgress.style.display = 'block';
+      mbRenderBtn.disabled = true;
+      mbRenderBtn.textContent = '⏳ Rendering…';
+
+      resizeMbCanvas();
+      const W = mbCanvas.width;
+      const H = mbCanvas.height;
+      const maxIter = mbMaxIter;
+      const { xMin, xMax, yMin, yMax } = mbView;
+      const imageData = mbCtx.createImageData(W, H);
+      const data = imageData.data;
+
+      const xRange = xMax - xMin;
+      const yRange = yMax - yMin;
+
+      const CHUNK = 12; // rows per chunk
+      let row = 0;
+
+      function renderChunk() {
+        const endRow = Math.min(row + CHUNK, H);
+        for (let py = row; py < endRow; py++) {
+          const cy = (py / H) * yRange + yMin;
+          for (let px = 0; px < W; px++) {
+            const cx = (px / W) * xRange + xMin;
+            let zr = 0, zi = 0;
+            let iter = 0;
+            while (iter < maxIter) {
+              const zr2 = zr * zr;
+              const zi2 = zi * zi;
+              if (zr2 + zi2 > 4) break;
+              zi = 2 * zr * zi + cy;
+              zr = zr2 - zi2 + cx;
+              iter++;
+            }
+            const idx = (py * W + px) * 4;
+            if (iter === maxIter) {
+              // Inside the set — black
+              data[idx]     = 0;
+              data[idx + 1] = 0;
+              data[idx + 2] = 0;
+              data[idx + 3] = 255;
+            } else {
+              // Smooth coloring
+              const smooth = iter + 1 - Math.log2(Math.log2(zr * zr + zi * zi));
+              const hue = (smooth / maxIter) * 360;
+              const [r, g, b] = mbHslToRgb(hue % 360, 1, 0.5);
+              data[idx]     = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+              data[idx + 3] = 255;
+            }
+          }
+        }
+        mbCtx.putImageData(imageData, 0, 0, 0, row, W, endRow - row);
+        row = endRow;
+
+        if (row < H) {
+          mbRenderHandle = setTimeout(renderChunk, 0);
+        } else {
+          mbRendering = false;
+          mbProgress.style.display = 'none';
+          mbRenderBtn.disabled = false;
+          mbRenderBtn.textContent = '⚡ Render';
+          mbRenderHandle = null;
+        }
+      }
+
+      renderChunk();
+    }
+
+    function mbZoomTo(cx, cy, factor) {
+      const xRange = (mbView.xMax - mbView.xMin) / factor;
+      const yRange = (mbView.yMax - mbView.yMin) / factor;
+      mbView.xMin = cx - xRange / 2;
+      mbView.xMax = cx + xRange / 2;
+      mbView.yMin = cy - yRange / 2;
+      mbView.yMax = cy + yRange / 2;
+      renderMandelbrot();
+    }
+
+    mbCanvas.addEventListener('click', (e) => {
+      const rect = mbCanvas.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (mbCanvas.width / rect.width);
+      const py = (e.clientY - rect.top) * (mbCanvas.height / rect.height);
+      const cx = (px / mbCanvas.width) * (mbView.xMax - mbView.xMin) + mbView.xMin;
+      const cy = (py / mbCanvas.height) * (mbView.yMax - mbView.yMin) + mbView.yMin;
+      mbZoomTo(cx, cy, 2);
+    });
+
+    mbIterSlider.addEventListener('input', () => {
+      mbMaxIter = parseInt(mbIterSlider.value, 10);
+      mbIterVal.textContent = mbMaxIter;
+    });
+
+    mbResetBtn.addEventListener('click', () => {
+      mbView = { xMin: -2.5, xMax: 1.0, yMin: -1.25, yMax: 1.25 };
+      renderMandelbrot();
+    });
+
+    mbRenderBtn.addEventListener('click', renderMandelbrot);
+
+    // Debounced resize
+    let mbResizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(mbResizeTimer);
+      mbResizeTimer = setTimeout(() => {
+        if (document.getElementById('panel-mandelbrot').classList.contains('active')) {
+          renderMandelbrot();
+        }
+      }, 250);
+    });
+
+    // Initial render
+    renderMandelbrot();
+
+    // ─────────────────────────────────────────────
+    //  SIERPIŃSKI TRIANGLE
+    // ─────────────────────────────────────────────
+    const sierCanvas = document.getElementById('sierpinski-canvas');
+    const sierCtx = sierCanvas.getContext('2d');
+    const sierDepthSlider = document.getElementById('sier-depth-slider');
+    const sierDepthVal = document.getElementById('sier-depth-val');
+    const sierColorPurple = document.getElementById('sier-color-purple');
+    const sierColorRainbow = document.getElementById('sier-color-rainbow');
+
+    let sierpinskiDrawn = false;
+    let sierColorScheme = 'purple';
+
+    const COLOR_SCHEMES = {
+      purple: [
+        '#7c3aed', '#8b5cf6', '#a78bfa', '#06b6d4', '#0891b2',
+        '#6d28d9', '#4f46e5', '#0e7490', '#c4b5fd', '#67e8f9'
+      ],
+      rainbow: [
+        '#ef4444', '#f97316', '#eab308', '#22c55e',
+        '#3b82f6', '#6366f1', '#a855f7', '#ec4899',
+        '#14b8a6', '#f59e0b'
+      ]
+    };
+
+    function resizeSierCanvas() {
+      const rect = sierCanvas.parentElement.getBoundingClientRect();
+      sierCanvas.width = Math.floor(rect.width) || 800;
+      sierCanvas.height = 480;
+    }
+
+    function sierpinski(ctx, ax, ay, bx, by, cx, cy, depth, colors) {
+      if (depth === 0) {
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.lineTo(cx, cy);
+        ctx.closePath();
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        ctx.fill();
+        return;
+      }
+      const mx1 = (ax + bx) / 2, my1 = (ay + by) / 2;
+      const mx2 = (bx + cx) / 2, my2 = (by + cy) / 2;
+      const mx3 = (ax + cx) / 2, my3 = (ay + cy) / 2;
+      sierpinski(ctx, ax, ay, mx1, my1, mx3, my3, depth - 1, colors);
+      sierpinski(ctx, mx1, my1, bx, by, mx2, my2, depth - 1, colors);
+      sierpinski(ctx, mx3, my3, mx2, my2, cx, cy, depth - 1, colors);
+    }
+
+    function drawSierpinski() {
+      resizeSierCanvas();
+      const W = sierCanvas.width;
+      const H = sierCanvas.height;
+      const depth = parseInt(sierDepthSlider.value, 10);
+      const colors = COLOR_SCHEMES[sierColorScheme];
+
+      sierCtx.clearRect(0, 0, W, H);
+
+      // Background fill
+      sierCtx.fillStyle = 'rgba(15,23,42,0.7)';
+      sierCtx.fillRect(0, 0, W, H);
+
+      const pad = 32;
+      const triH = H - pad * 2;
+      const triW = triH * (2 / Math.sqrt(3));
+
+      // Equilateral triangle centered
+      const cx = W / 2;
+      const ax = cx, ay = pad;                        // top
+      const bx = cx - triW / 2, by = H - pad;         // bottom-left
+      const dx = cx + triW / 2, dy = H - pad;         // bottom-right
+
+      // For deeper recursion, use setTimeout to avoid UI blocking
+      if (depth >= 7) {
+        setTimeout(() => {
+          sierpinski(sierCtx, ax, ay, bx, by, dx, dy, depth, colors);
+          sierpinskiDrawn = true;
+        }, 0);
+      } else {
+        sierpinski(sierCtx, ax, ay, bx, by, dx, dy, depth, colors);
+        sierpinskiDrawn = true;
+      }
+    }
+
+    sierDepthSlider.addEventListener('input', () => {
+      sierDepthVal.textContent = sierDepthSlider.value;
+      drawSierpinski();
+    });
+
+    function setSierColor(scheme) {
+      sierColorScheme = scheme;
+      sierColorPurple.classList.toggle('active', scheme === 'purple');
+      sierColorPurple.setAttribute('aria-pressed', scheme === 'purple');
+      sierColorRainbow.classList.toggle('active', scheme === 'rainbow');
+      sierColorRainbow.setAttribute('aria-pressed', scheme === 'rainbow');
+      drawSierpinski();
+    }
+
+    sierColorPurple.addEventListener('click', () => setSierColor('purple'));
+    sierColorRainbow.addEventListener('click', () => setSierColor('rainbow'));
+
+    window.addEventListener('resize', () => {
+      if (document.getElementById('panel-sierpinski').classList.contains('active')) {
+        drawSierpinski();
+      }
+    });
+  </script>
+</body>
+</html>

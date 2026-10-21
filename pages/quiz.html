@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Arena · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .option-btn {
+      width: 100%;
+      text-align: left;
+      padding: 0.875rem 1.25rem;
+      border-radius: 10px;
+      border: 1.5px solid var(--glass-border);
+      background: var(--glass-bg);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--accent-indigo);
+      background: rgba(99, 102, 241, 0.1);
+      transform: translateX(2px);
+    }
+    .option-btn.correct {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+    .option-btn.wrong {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+    .option-btn:disabled {
+      cursor: default;
+      transform: none;
+    }
+    .option-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .option-btn.correct .option-label { background: rgba(34,197,94,0.3); }
+    .option-btn.wrong   .option-label { background: rgba(239,68,68,0.3); }
+
+    #timer-bar {
+      transition: width 1s linear, background-color 1s;
+      height: 6px;
+      border-radius: 9999px;
+    }
+    #timer-ring-text {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .topic-card {
+      border: 1.5px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      background: var(--glass-bg);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .topic-card:hover { border-color: var(--accent-indigo); background: rgba(99,102,241,0.08); transform: translateY(-2px); }
+    .topic-card.selected { border-color: var(--accent-indigo); background: rgba(99,102,241,0.18); }
+    .topic-card input[type="radio"] { display: none; }
+
+    .explanation-box {
+      border-radius: 10px;
+      border: 1px solid rgba(99,102,241,0.3);
+      background: rgba(99,102,241,0.08);
+      padding: 0.875rem 1.125rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-top: 1rem;
+    }
+    .explanation-box strong { color: var(--accent-indigo); }
+
+    .score-ring {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      border: 5px solid;
+      transition: border-color 0.4s;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: fadeInUp 0.35s ease both; }
+
+    @keyframes pulse-timer {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+    .timer-pulse { animation: pulse-timer 0.5s ease 3; }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+    <div style="max-width: 700px; margin: 0 auto; padding: 2rem 1rem 4rem;">
+
+      <!-- ═══════════════════════════════════════════
+           SCREEN 1: START
+      ═══════════════════════════════════════════ -->
+      <section id="screen-start" class="screen active animate-in" aria-label="Quiz start screen">
+        <div class="text-center mb-8">
+          <div class="mb-3">
+            <span class="badge" style="background:rgba(99,102,241,0.18);color:var(--accent-indigo);font-size:0.8rem;padding:0.3rem 0.9rem;border-radius:999px;">
+              🎯 Quiz Arena
+            </span>
+          </div>
+          <h1 class="section-title gradient-text mb-2">Test Your Skills</h1>
+          <p class="section-subtitle" style="max-width:480px;margin:0 auto;">
+            Choose a topic and challenge yourself. Every question has a 30-second timer!
+          </p>
+        </div>
+
+        <!-- Topic selector -->
+        <div class="glass-card mb-6" style="padding:1.5rem;">
+          <h2 class="text-sm font-semibold mb-4" style="color:var(--text-secondary);letter-spacing:0.08em;text-transform:uppercase;">Select Topic</h2>
+          <div class="grid grid-cols-1 gap-3" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));" role="radiogroup" aria-label="Quiz topic">
+            <label class="topic-card selected" id="topic-all">
+              <input type="radio" name="topic" value="all" checked />
+              <span style="font-size:1.4rem;">🌐</span>
+              <div>
+                <div class="font-semibold" style="color:var(--text-primary);">All Topics</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">44 questions</div>
+              </div>
+            </label>
+            <label class="topic-card" id="topic-algebra">
+              <input type="radio" name="topic" value="algebra" />
+              <span style="font-size:1.4rem;">📐</span>
+              <div>
+                <div class="font-semibold" style="color:var(--text-primary);">Algebra</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">11 questions</div>
+              </div>
+            </label>
+            <label class="topic-card" id="topic-calculus">
+              <input type="radio" name="topic" value="calculus" />
+              <span style="font-size:1.4rem;">∫</span>
+              <div>
+                <div class="font-semibold" style="color:var(--text-primary);">Calculus</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">11 questions</div>
+              </div>
+            </label>
+            <label class="topic-card" id="topic-geometry">
+              <input type="radio" name="topic" value="geometry" />
+              <span style="font-size:1.4rem;">📏</span>
+              <div>
+                <div class="font-semibold" style="color:var(--text-primary);">Geometry</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">11 questions</div>
+              </div>
+            </label>
+            <label class="topic-card" id="topic-statistics">
+              <input type="radio" name="topic" value="statistics" />
+              <span style="font-size:1.4rem;">📊</span>
+              <div>
+                <div class="font-semibold" style="color:var(--text-primary);">Statistics</div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">11 questions</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Question count slider -->
+        <div class="glass-card mb-8" style="padding:1.25rem 1.5rem;">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-sm font-semibold" style="color:var(--text-secondary);letter-spacing:0.08em;text-transform:uppercase;">Number of Questions</h2>
+            <span id="q-count-display" class="font-mono font-bold" style="color:var(--accent-indigo);font-size:1.1rem;">10</span>
+          </div>
+          <input id="q-count-slider" type="range" min="5" max="44" value="10" step="1"
+            class="w-full" style="accent-color:var(--accent-indigo);" aria-label="Number of questions" />
+          <div class="flex justify-between mt-1" style="font-size:0.75rem;color:var(--text-secondary);">
+            <span>5</span><span>44</span>
+          </div>
+        </div>
+
+        <div class="text-center">
+          <button id="btn-start" class="btn btn-primary" style="font-size:1.05rem;padding:0.85rem 2.5rem;">
+            🚀 Start Quiz
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════
+           SCREEN 2: QUESTION
+      ═══════════════════════════════════════════ -->
+      <section id="screen-question" class="screen" aria-label="Question screen" aria-live="polite">
+        <!-- Progress + timer header -->
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <div class="flex-1">
+            <div class="flex justify-between text-xs mb-1" style="color:var(--text-secondary);">
+              <span>Question <span id="q-current">1</span> of <span id="q-total">10</span></span>
+              <span id="q-progress-pct">0%</span>
+            </div>
+            <div style="height:6px;border-radius:9999px;background:rgba(255,255,255,0.08);overflow:hidden;">
+              <div id="progress-bar" style="height:100%;border-radius:9999px;background:linear-gradient(90deg,var(--accent-indigo),var(--accent-cyan));width:0%;transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+          <!-- Timer -->
+          <div style="position:relative;flex-shrink:0;">
+            <div id="timer-display"
+              class="font-mono font-bold text-xl flex items-center justify-center"
+              style="width:52px;height:52px;border-radius:50%;border:3px solid var(--accent-indigo);color:var(--accent-indigo);transition:border-color 0.4s,color 0.4s;"
+              aria-label="Time remaining" aria-live="polite">
+              <span id="timer-ring-text">30</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer bar -->
+        <div style="height:6px;border-radius:9999px;background:rgba(255,255,255,0.06);overflow:hidden;margin-bottom:1.5rem;">
+          <div id="timer-bar" style="width:100%;background:#22c55e;height:100%;border-radius:9999px;"></div>
+        </div>
+
+        <!-- Question card -->
+        <div class="glass-card animate-in" id="question-card" style="padding:1.75rem 2rem;margin-bottom:1.25rem;">
+          <!-- Topic badge + number -->
+          <div class="flex items-center gap-2 mb-4">
+            <span id="q-topic-badge" class="badge" style="background:rgba(99,102,241,0.18);color:var(--accent-indigo);font-size:0.75rem;padding:0.25rem 0.75rem;border-radius:999px;text-transform:capitalize;"></span>
+            <span id="q-difficulty-indicator" style="font-size:0.75rem;color:var(--text-secondary);"></span>
+          </div>
+
+          <!-- Question text -->
+          <p id="question-text" class="text-lg font-medium leading-relaxed mb-6" style="color:var(--text-primary);min-height:3rem;"></p>
+
+          <!-- Options -->
+          <div id="options-container" class="flex flex-col gap-3" role="group" aria-label="Answer options">
+            <!-- Dynamically generated -->
+          </div>
+
+          <!-- Explanation (hidden until answered) -->
+          <div id="explanation-container" style="display:none;">
+            <div class="explanation-box">
+              <strong>💡 Explanation:</strong>
+              <span id="explanation-text"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next button -->
+        <div class="flex justify-between items-center">
+          <span id="answered-status" style="font-size:0.85rem;color:var(--text-secondary);"></span>
+          <button id="btn-next" class="btn btn-primary" style="display:none;padding:0.7rem 1.75rem;" aria-label="Next question">
+            Next Question →
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════
+           SCREEN 3: RESULTS
+      ═══════════════════════════════════════════ -->
+      <section id="screen-results" class="screen animate-in" aria-label="Quiz results screen">
+        <div class="text-center mb-8">
+          <div class="mb-2">
+            <span class="badge" style="background:rgba(99,102,241,0.18);color:var(--accent-indigo);font-size:0.8rem;padding:0.3rem 0.9rem;border-radius:999px;">
+              🏁 Results
+            </span>
+          </div>
+          <h1 class="section-title mb-1" id="results-headline">Quiz Complete!</h1>
+          <p class="section-subtitle" id="results-topic-label" style="color:var(--text-secondary);"></p>
+        </div>
+
+        <!-- Score ring -->
+        <div class="flex flex-col items-center mb-8">
+          <div class="score-ring mb-3" id="score-ring" aria-label="Your score">
+            <div class="font-bold" id="score-fraction" style="font-size:2rem;line-height:1;color:var(--text-primary);"></div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.2rem;">score</div>
+          </div>
+          <div id="score-pct-badge" class="font-mono font-bold text-3xl mb-1"></div>
+          <p id="score-message" class="section-subtitle" style="font-size:0.95rem;"></p>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="glass-card mb-6" style="padding:1.5rem;">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div id="stat-correct" class="font-bold text-2xl" style="color:#22c55e;"></div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;">Correct</div>
+            </div>
+            <div style="border-left:1px solid var(--glass-border);border-right:1px solid var(--glass-border);">
+              <div id="stat-wrong" class="font-bold text-2xl" style="color:#ef4444;"></div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;">Incorrect</div>
+            </div>
+            <div>
+              <div id="stat-streak" class="font-bold text-2xl" style="color:var(--accent-indigo);"></div>
+              <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;">Day Streak 🔥</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question review (collapsed summary) -->
+        <div class="glass-card mb-8" style="padding:1.25rem 1.5rem;">
+          <h2 class="text-sm font-semibold mb-3" style="color:var(--text-secondary);letter-spacing:0.08em;text-transform:uppercase;">Question Review</h2>
+          <div id="review-list" class="flex flex-col gap-2">
+            <!-- Generated by JS -->
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button id="btn-retry" class="btn btn-secondary" style="padding:0.8rem 2rem;">
+            🔄 Try Again
+          </button>
+          <a href="./dashboard.html" class="btn btn-primary" style="padding:0.8rem 2rem;text-decoration:none;text-align:center;" id="btn-dashboard">
+            📊 View Dashboard
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+    import { storageGet, storageSet, KEYS } from '../js/storage.js';
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    let allQuestions = [];
+    let quizQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let selectedTopic = 'all';
+    let questionCount = 10;
+    let timerInterval = null;
+    let timeLeft = 30;
+    let answered = false;
+    let sessionResults = [];
+
+    const TIMER_MAX = 30;
+
+    // ─── DOM refs ─────────────────────────────────────────────────────────────
+    const screens = {
+      start:    document.getElementById('screen-start'),
+      question: document.getElementById('screen-question'),
+      results:  document.getElementById('screen-results'),
+    };
+
+    const showScreen = (name) => {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      const target = screens[name];
+      target.classList.remove('animate-in');
+      void target.offsetWidth; // force reflow to retrigger animation
+      target.classList.add('active', 'animate-in');
+    };
+
+    // ─── Load questions ───────────────────────────────────────────────────────
+    async function loadQuestions() {
+      try {
+        const res = await fetch('../data/questions.json');
+        allQuestions = await res.json();
+      } catch (e) {
+        console.error('Failed to load questions:', e);
+        allQuestions = [];
+      }
+    }
+
+    // ─── Topic card interaction ───────────────────────────────────────────────
+    document.querySelectorAll('.topic-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        const radio = card.querySelector('input[type="radio"]');
+        radio.checked = true;
+        selectedTopic = radio.value;
+        updateSliderMax();
+      });
+    });
+
+    function updateSliderMax() {
+      const pool = selectedTopic === 'all'
+        ? allQuestions
+        : allQuestions.filter(q => q.topic === selectedTopic);
+      const max = pool.length || 44;
+      const slider = document.getElementById('q-count-slider');
+      slider.max = max;
+      if (parseInt(slider.value) > max) slider.value = max;
+      document.getElementById('q-count-display').textContent = slider.value;
+      questionCount = parseInt(slider.value);
+    }
+
+    const slider = document.getElementById('q-count-slider');
+    slider.addEventListener('input', () => {
+      document.getElementById('q-count-display').textContent = slider.value;
+      questionCount = parseInt(slider.value);
+    });
+
+    // ─── Start quiz ───────────────────────────────────────────────────────────
+    document.getElementById('btn-start').addEventListener('click', () => {
+      let pool = selectedTopic === 'all'
+        ? [...allQuestions]
+        : allQuestions.filter(q => q.topic === selectedTopic);
+
+      if (pool.length === 0) {
+        alert('No questions available. Please check the questions file.');
+        return;
+      }
+
+      // Shuffle and slice
+      pool = pool.sort(() => Math.random() - 0.5).slice(0, questionCount);
+      quizQuestions = pool;
+      currentIndex = 0;
+      score = 0;
+      sessionResults = [];
+
+      showScreen('question');
+      renderQuestion();
+    });
+
+    // ─── Render question ──────────────────────────────────────────────────────
+    function renderQuestion() {
+      const q = quizQuestions[currentIndex];
+      answered = false;
+
+      // Progress
+      const pct = Math.round((currentIndex / quizQuestions.length) * 100);
+      document.getElementById('q-current').textContent = currentIndex + 1;
+      document.getElementById('q-total').textContent = quizQuestions.length;
+      document.getElementById('q-progress-pct').textContent = pct + '%';
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // Topic badge
+      const topicEmojis = { algebra:'📐', calculus:'∫', geometry:'📏', statistics:'📊' };
+      const badge = document.getElementById('q-topic-badge');
+      badge.textContent = (topicEmojis[q.topic] || '❓') + ' ' + q.topic;
+
+      // Question text
+      document.getElementById('question-text').textContent = q.question;
+
+      // Options
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+      const labels = ['A', 'B', 'C', 'D'];
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.setAttribute('aria-label', `Option ${labels[i]}: ${opt}`);
+        btn.innerHTML = `<span class="option-label">${labels[i]}</span><span>${opt}</span>`;
+        btn.addEventListener('click', () => handleAnswer(i, q));
+        container.appendChild(btn);
+      });
+
+      // Hide explanation + next button
+      document.getElementById('explanation-container').style.display = 'none';
+      document.getElementById('btn-next').style.display = 'none';
+      document.getElementById('answered-status').textContent = '';
+
+      // Animate question card
+      const card = document.getElementById('question-card');
+      card.classList.remove('animate-in');
+      void card.offsetWidth;
+      card.classList.add('animate-in');
+
+      // Start timer
+      startTimer();
+    }
+
+    // ─── Timer ────────────────────────────────────────────────────────────────
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = TIMER_MAX;
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerUI();
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      const pct = timeLeft / TIMER_MAX;
+      const display = document.getElementById('timer-display');
+      const text = document.getElementById('timer-ring-text');
+      const bar = document.getElementById('timer-bar');
+
+      text.textContent = timeLeft;
+
+      // Color transitions
+      let color, barColor;
+      if (pct > 0.5) {
+        color = '#22c55e';      // green
+        barColor = '#22c55e';
+      } else if (pct > 0.25) {
+        color = '#eab308';      // yellow
+        barColor = '#eab308';
+      } else {
+        color = '#ef4444';      // red
+        barColor = '#ef4444';
+        if (timeLeft <= 5 && timeLeft > 0) {
+          text.classList.remove('timer-pulse');
+          void text.offsetWidth;
+          text.classList.add('timer-pulse');
+        }
+      }
+
+      display.style.borderColor = color;
+      display.style.color = color;
+      bar.style.backgroundColor = barColor;
+      bar.style.width = (pct * 100) + '%';
+    }
+
+    function handleTimeout() {
+      if (answered) return;
+      answered = true;
+      disableOptions();
+
+      const q = quizQuestions[currentIndex];
+      // Mark correct option
+      const optBtns = document.querySelectorAll('.option-btn');
+      optBtns[q.answer].classList.add('correct');
+
+      // Record as wrong (timed out)
+      sessionResults.push({ q, userAnswer: -1, correct: false, timedOut: true });
+
+      showExplanation(q);
+      document.getElementById('answered-status').textContent = '⏱ Time\'s up!';
+      document.getElementById('btn-next').style.display = 'inline-flex';
+    }
+
+    // ─── Handle answer ────────────────────────────────────────────────────────
+    function handleAnswer(index, q) {
+      if (answered) return;
+      answered = true;
+      clearInterval(timerInterval);
+
+      disableOptions();
+      const optBtns = document.querySelectorAll('.option-btn');
+      const isCorrect = index === q.answer;
+
+      optBtns[index].classList.add(isCorrect ? 'correct' : 'wrong');
+      if (!isCorrect) {
+        optBtns[q.answer].classList.add('correct');
+      }
+
+      if (isCorrect) {
+        score++;
+        document.getElementById('answered-status').textContent = '✅ Correct!';
+      } else {
+        document.getElementById('answered-status').textContent = '❌ Incorrect';
+      }
+
+      sessionResults.push({ q, userAnswer: index, correct: isCorrect, timedOut: false });
+      showExplanation(q);
+      document.getElementById('btn-next').style.display = 'inline-flex';
+    }
+
+    function disableOptions() {
+      document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+    }
+
+    function showExplanation(q) {
+      document.getElementById('explanation-text').textContent = ' ' + q.explanation;
+      document.getElementById('explanation-container').style.display = 'block';
+    }
+
+    // ─── Next question ────────────────────────────────────────────────────────
+    document.getElementById('btn-next').addEventListener('click', () => {
+      currentIndex++;
+      if (currentIndex < quizQuestions.length) {
+        renderQuestion();
+      } else {
+        clearInterval(timerInterval);
+        saveResults();
+        showResults();
+      }
+    });
+
+    // ─── Save results to localStorage ────────────────────────────────────────
+    function saveResults() {
+      const topic = selectedTopic;
+      const total = quizQuestions.length;
+      const pct = Math.round((score / total) * 100);
+
+      // Append score
+      const scores = storageGet(KEYS.QUIZ_SCORES, []);
+      scores.push({
+        date: new Date().toISOString(),
+        topic,
+        score,
+        total,
+        pct
+      });
+      if (scores.length > 50) scores.shift();
+      storageSet(KEYS.QUIZ_SCORES, scores);
+
+      // Streak logic
+      const today = new Date().toDateString();
+      const lastDate = storageGet(KEYS.QUIZ_LAST_DATE, null);
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      let streak = storageGet(KEYS.QUIZ_STREAK, 0);
+      if (lastDate === today) {
+        // same day — keep streak as-is
+      } else if (lastDate === yesterday) {
+        streak++;
+      } else {
+        streak = 1;
+      }
+      storageSet(KEYS.QUIZ_STREAK, streak);
+      storageSet(KEYS.QUIZ_LAST_DATE, today);
+    }
+
+    // ─── Show results ─────────────────────────────────────────────────────────
+    function showResults() {
+      const total = quizQuestions.length;
+      const pct = Math.round((score / total) * 100);
+      const wrong = total - score;
+      const streak = storageGet(KEYS.QUIZ_STREAK, 1);
+
+      // Score ring
+      const ring = document.getElementById('score-ring');
+      let ringColor, pctColor, message, emoji;
+      if (pct >= 80) {
+        ringColor = '#22c55e'; pctColor = '#22c55e';
+        message = 'Excellent work! You\'re a math wizard! 🧙';
+        emoji = '🏆';
+      } else if (pct >= 50) {
+        ringColor = '#eab308'; pctColor = '#eab308';
+        message = 'Good effort! Keep practicing to improve.';
+        emoji = '👍';
+      } else {
+        ringColor = '#ef4444'; pctColor = '#ef4444';
+        message = 'Keep studying — you\'ll get there!';
+        emoji = '💪';
+      }
+      ring.style.borderColor = ringColor;
+
+      document.getElementById('results-headline').textContent = emoji + ' Quiz Complete!';
+      document.getElementById('results-topic-label').textContent =
+        selectedTopic === 'all' ? 'All Topics' : selectedTopic.charAt(0).toUpperCase() + selectedTopic.slice(1);
+
+      document.getElementById('score-fraction').textContent = `${score}/${total}`;
+      const pctBadge = document.getElementById('score-pct-badge');
+      pctBadge.textContent = pct + '%';
+      pctBadge.style.color = pctColor;
+
+      document.getElementById('score-message').textContent = message;
+      document.getElementById('stat-correct').textContent = score;
+      document.getElementById('stat-wrong').textContent = wrong;
+      document.getElementById('stat-streak').textContent = streak;
+
+      // Question review list
+      const reviewList = document.getElementById('review-list');
+      reviewList.innerHTML = '';
+      sessionResults.forEach((result, i) => {
+        const row = document.createElement('div');
+        row.style.cssText = `
+          display:flex; align-items:flex-start; gap:0.75rem;
+          padding:0.6rem 0.75rem; border-radius:8px;
+          background:${result.correct ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)'};
+          border:1px solid ${result.correct ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'};
+        `;
+        const icon = result.timedOut ? '⏱' : result.correct ? '✅' : '❌';
+        const qText = result.q.question.length > 60
+          ? result.q.question.slice(0, 60) + '…'
+          : result.q.question;
+        row.innerHTML = `
+          <span style="flex-shrink:0;font-size:1rem;">${icon}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.82rem;color:var(--text-primary);font-weight:500;">${i+1}. ${qText}</div>
+            <div style="font-size:0.76rem;color:var(--text-secondary);margin-top:0.2rem;">
+              ${result.timedOut
+                ? 'Timed out — correct: ' + result.q.options[result.q.answer]
+                : result.correct
+                  ? result.q.options[result.q.answer]
+                  : 'Your answer: ' + (result.userAnswer >= 0 ? result.q.options[result.userAnswer] : '—')
+                    + ' · Correct: ' + result.q.options[result.q.answer]
+              }
+            </div>
+          </div>
+        `;
+        reviewList.appendChild(row);
+      });
+
+      showScreen('results');
+    }
+
+    // ─── Try Again ────────────────────────────────────────────────────────────
+    document.getElementById('btn-retry').addEventListener('click', () => {
+      showScreen('start');
+      updateSliderMax();
+    });
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+      await loadQuestions();
+      updateSliderMax();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unit Converter · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .tab-btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: #a78bfa;
+      background: transparent;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      background: rgba(139, 92, 246, 0.15);
+      border-color: rgba(139, 92, 246, 0.6);
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #7c3aed, #0891b2);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 0 18px rgba(124, 58, 237, 0.45);
+    }
+    .unit-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-color: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      padding: 0.65rem 2.5rem 0.65rem 1rem;
+      font-size: 1rem;
+      width: 100%;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a78bfa' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1.1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .unit-select:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+    }
+    .unit-input {
+      background-color: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      padding: 0.65rem 1rem;
+      font-size: 1.25rem;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .unit-input:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+    }
+    .result-display {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(8, 145, 178, 0.12));
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      min-height: 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .result-value {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-family: 'Courier New', monospace;
+    }
+    .formula-pill {
+      display: inline-block;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      border-radius: 9999px;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+      color: #c4b5fd;
+      font-family: 'Courier New', monospace;
+      margin-top: 0.5rem;
+    }
+    .swap-btn {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(8, 145, 178, 0.25));
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      color: #a78bfa;
+      font-size: 1.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .swap-btn:hover {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.5), rgba(8, 145, 178, 0.5));
+      color: #fff;
+      box-shadow: 0 0 14px rgba(124, 58, 237, 0.4);
+      transform: rotate(180deg);
+    }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+    <!-- Hero -->
+    <section class="text-center mb-10">
+      <div class="badge mb-3">⚡ Instant Conversion</div>
+      <h1 class="text-4xl md:text-5xl font-bold mb-3">
+        <span class="gradient-text">Unit Converter</span>
+      </h1>
+      <p class="section-subtitle max-w-xl mx-auto">
+        Convert between units across six categories in real time.
+      </p>
+    </section>
+
+    <!-- Category Tabs -->
+    <section class="mb-8">
+      <div class="flex flex-wrap justify-center gap-2" role="tablist" aria-label="Unit categories" id="tab-list">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- Converter Card -->
+    <section class="max-w-2xl mx-auto">
+      <div class="glass-card p-8">
+        <!-- From -->
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-purple-300 mb-2" for="from-unit">From</label>
+          <div class="flex gap-3 items-center">
+            <div class="flex-1">
+              <select id="from-unit" class="unit-select" aria-label="From unit"></select>
+            </div>
+            <div class="flex-1">
+              <input
+                id="from-value"
+                type="number"
+                class="unit-input"
+                placeholder="Enter value…"
+                aria-label="Value to convert"
+                step="any"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Swap row -->
+        <div class="flex justify-center my-4">
+          <button class="swap-btn" id="swap-btn" aria-label="Swap from and to units" title="Swap units">
+            ⇅
+          </button>
+        </div>
+
+        <!-- To -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-cyan-300 mb-2" for="to-unit">To</label>
+          <div class="flex-1">
+            <select id="to-unit" class="unit-select" aria-label="To unit"></select>
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div class="result-display" aria-live="polite" aria-label="Conversion result">
+          <div class="text-xs text-slate-400 mb-1 uppercase tracking-widest font-semibold">Result</div>
+          <div class="result-value" id="result-value">—</div>
+          <div id="formula-display"></div>
+        </div>
+      </div>
+
+      <!-- Quick Reference table -->
+      <div class="mt-6 glass-card p-6" id="quick-ref-section">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-3">Quick Reference</h2>
+        <div id="quick-ref-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-slate-300"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    /* ─────────────────────────── DATA ─────────────────────────── */
+    const UNITS = {
+      length: {
+        label: 'Length',
+        icon: '📏',
+        units: { mm: 0.001, cm: 0.01, m: 1, km: 1000, inch: 0.0254, foot: 0.3048, yard: 0.9144, mile: 1609.34 },
+        base: 'm'
+      },
+      weight: {
+        label: 'Weight',
+        icon: '⚖️',
+        units: { mg: 0.000001, g: 0.001, kg: 1, tonne: 1000, oz: 0.0283495, lb: 0.453592 },
+        base: 'kg'
+      },
+      temperature: {
+        label: 'Temperature',
+        icon: '🌡️',
+        units: ['Celsius', 'Fahrenheit', 'Kelvin']
+      },
+      area: {
+        label: 'Area',
+        icon: '▭',
+        units: { 'mm²': 0.000001, 'cm²': 0.0001, 'm²': 1, 'km²': 1000000, acre: 4046.86, hectare: 10000 },
+        base: 'm²'
+      },
+      speed: {
+        label: 'Speed',
+        icon: '🚀',
+        units: { 'm/s': 1, 'km/h': 0.277778, mph: 0.44704, knots: 0.514444 },
+        base: 'm/s'
+      },
+      data: {
+        label: 'Data',
+        icon: '💾',
+        units: { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 },
+        base: 'B'
+      }
+    };
+
+    /* ─────────────────────────── STATE ─────────────────────────── */
+    let currentCategory = 'length';
+
+    /* ─────────────────────────── ELEMENTS ─────────────────────────── */
+    const tabList      = document.getElementById('tab-list');
+    const fromUnit     = document.getElementById('from-unit');
+    const toUnit       = document.getElementById('to-unit');
+    const fromValue    = document.getElementById('from-value');
+    const resultValue  = document.getElementById('result-value');
+    const formulaDisp  = document.getElementById('formula-display');
+    const swapBtn      = document.getElementById('swap-btn');
+    const quickRefGrid = document.getElementById('quick-ref-grid');
+
+    /* ─────────────────────────── BUILD TABS ─────────────────────────── */
+    function buildTabs() {
+      tabList.innerHTML = '';
+      Object.entries(UNITS).forEach(([key, cat]) => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (key === currentCategory ? ' active' : '');
+        btn.textContent = `${cat.icon} ${cat.label}`;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', key === currentCategory ? 'true' : 'false');
+        btn.setAttribute('aria-controls', 'converter-panel');
+        btn.dataset.key = key;
+        btn.addEventListener('click', () => selectCategory(key));
+        tabList.appendChild(btn);
+      });
+    }
+
+    /* ─────────────────────────── BUILD SELECTS ─────────────────────────── */
+    function buildSelects(category) {
+      const cat = UNITS[category];
+      const unitList = Array.isArray(cat.units) ? cat.units : Object.keys(cat.units);
+
+      [fromUnit, toUnit].forEach((sel, idx) => {
+        sel.innerHTML = '';
+        unitList.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u;
+          opt.textContent = u;
+          sel.appendChild(opt);
+        });
+      });
+
+      // Default: different units selected
+      if (unitList.length > 1) toUnit.selectedIndex = 1;
+    }
+
+    /* ─────────────────────────── CONVERSION ─────────────────────────── */
+    function convert() {
+      const cat  = UNITS[currentCategory];
+      const raw  = parseFloat(fromValue.value);
+      const from = fromUnit.value;
+      const to   = toUnit.value;
+
+      if (isNaN(raw)) {
+        resultValue.textContent = '—';
+        formulaDisp.innerHTML = '';
+        return;
+      }
+
+      let result;
+      let formulaText = '';
+
+      if (currentCategory === 'temperature') {
+        result = convertTemperature(raw, from, to);
+        formulaText = getTemperatureFormula(from, to);
+      } else {
+        const fromFactor = cat.units[from];
+        const toFactor   = cat.units[to];
+        // Convert: value_in_base = raw * fromFactor;  result = value_in_base / toFactor
+        result = (raw * fromFactor) / toFactor;
+        const ratio = fromFactor / toFactor;
+        formulaText = `1 ${from} = ${formatNumber(ratio)} ${to}`;
+      }
+
+      resultValue.textContent = `${formatNumber(result)} ${to}`;
+      formulaDisp.innerHTML = `<span class="formula-pill">${formulaText}</span>`;
+    }
+
+    function convertTemperature(value, from, to) {
+      if (from === to) return value;
+      // Convert to Celsius first
+      let celsius;
+      if (from === 'Celsius')    celsius = value;
+      if (from === 'Fahrenheit') celsius = (value - 32) * 5 / 9;
+      if (from === 'Kelvin')     celsius = value - 273.15;
+      // Celsius to target
+      if (to === 'Celsius')    return celsius;
+      if (to === 'Fahrenheit') return celsius * 9 / 5 + 32;
+      if (to === 'Kelvin')     return celsius + 273.15;
+    }
+
+    function getTemperatureFormula(from, to) {
+      if (from === to) return `${from} → ${to}: no conversion needed`;
+      const map = {
+        'Celsius→Fahrenheit':    '°F = (°C × 9/5) + 32',
+        'Fahrenheit→Celsius':    '°C = (°F − 32) × 5/9',
+        'Celsius→Kelvin':        'K = °C + 273.15',
+        'Kelvin→Celsius':        '°C = K − 273.15',
+        'Fahrenheit→Kelvin':     'K = (°F − 32) × 5/9 + 273.15',
+        'Kelvin→Fahrenheit':     '°F = (K − 273.15) × 9/5 + 32'
+      };
+      return map[`${from}→${to}`] || '';
+    }
+
+    function formatNumber(n) {
+      if (Math.abs(n) === 0) return '0';
+      if (Math.abs(n) >= 1e12 || (Math.abs(n) < 1e-6 && n !== 0)) {
+        return n.toExponential(6);
+      }
+      // Up to 8 significant digits, trim trailing zeros
+      const s = parseFloat(n.toPrecision(8)).toString();
+      return s;
+    }
+
+    /* ─────────────────────────── QUICK REFERENCE ─────────────────────────── */
+    function buildQuickRef(category) {
+      const cat = UNITS[category];
+      quickRefGrid.innerHTML = '';
+
+      if (category === 'temperature') {
+        const pairs = [
+          ['0 °C', '32 °F / 273.15 K'],
+          ['100 °C', '212 °F / 373.15 K'],
+          ['-40 °C', '-40 °F / 233.15 K'],
+          ['37 °C', '98.6 °F / 310.15 K'],
+          ['−273.15 °C', '0 K (absolute zero)'],
+          ['20 °C', '68 °F / 293.15 K']
+        ];
+        pairs.forEach(([k, v]) => {
+          quickRefGrid.innerHTML += `<div class="col-span-1 rounded-lg p-2 bg-white/5"><span class="text-purple-300 font-mono text-xs">${k}</span><div class="text-slate-400 text-xs mt-0.5">${v}</div></div>`;
+        });
+        return;
+      }
+
+      const unitList = Object.keys(cat.units);
+      const base = cat.base;
+      const baseFactor = cat.units[base];
+
+      unitList.forEach(u => {
+        if (u === base) return;
+        const ratio = cat.units[u] / baseFactor;
+        quickRefGrid.innerHTML += `
+          <div class="rounded-lg p-2 bg-white/5">
+            <span class="text-purple-300 font-mono text-xs">1 ${u}</span>
+            <div class="text-slate-400 text-xs mt-0.5">= ${formatNumber(ratio)} ${base}</div>
+          </div>`;
+      });
+    }
+
+    /* ─────────────────────────── SELECT CATEGORY ─────────────────────────── */
+    function selectCategory(key) {
+      currentCategory = key;
+      buildTabs();
+      buildSelects(key);
+      fromValue.value = '';
+      resultValue.textContent = '—';
+      formulaDisp.innerHTML = '';
+      buildQuickRef(key);
+    }
+
+    /* ─────────────────────────── EVENTS ─────────────────────────── */
+    fromValue.addEventListener('input', convert);
+    fromUnit.addEventListener('change', convert);
+    toUnit.addEventListener('change', convert);
+
+    swapBtn.addEventListener('click', () => {
+      const tmp = fromUnit.value;
+      fromUnit.value = toUnit.value;
+      toUnit.value = tmp;
+      convert();
+    });
+
+    /* ─────────────────────────── INIT ─────────────────────────── */
+    buildTabs();
+    buildSelects(currentCategory);
+    buildQuickRef(currentCategory);
+  </script>
+</body>
+</html>

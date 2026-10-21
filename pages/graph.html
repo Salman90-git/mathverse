@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Plotter · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    #graphCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      border-radius: 12px;
+    }
+    #graphCanvas:active { cursor: grabbing; }
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 340px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      background: #050d1a;
+    }
+    .fn-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      background: rgba(15,23,42,0.6);
+      border: 1px solid var(--glass-border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+    .fn-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .fn-remove {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 0.15rem;
+      transition: opacity 0.15s;
+    }
+    .fn-remove:hover { opacity: 0.7; }
+    .fn-label { flex: 1; color: var(--text-primary); word-break: break-all; }
+    #errorMsg {
+      color: #ef4444;
+      font-size: 0.82rem;
+      min-height: 1.2em;
+      padding: 0.2rem 0;
+    }
+    .zoom-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .zoom-btn:hover { background: rgba(99,102,241,0.3); }
+    .crosshair-label {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: rgba(148,163,184,0.8);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Page Header -->
+    <div class="mb-6">
+      <span class="badge badge-cyan mb-3">Interactive Tool</span>
+      <h1 class="section-title gradient-text">Graph Plotter</h1>
+      <p class="section-subtitle">Plot multiple functions simultaneously. Zoom, pan, and explore math visually.</p>
+    </div>
+
+    <div class="flex flex-col gap-6 lg:flex-row">
+
+      <!-- Left Panel: Controls -->
+      <aside class="glass-card p-5 flex flex-col gap-4" style="width:100%;max-width:340px;flex-shrink:0;align-self:start;">
+
+        <!-- Function Input -->
+        <div>
+          <label for="fnInput" class="block text-sm font-semibold mb-1" style="color:var(--text-secondary);">
+            Add Function <span style="color:var(--text-muted);">(use x as variable)</span>
+          </label>
+          <div class="flex gap-2">
+            <input
+              id="fnInput"
+              type="text"
+              class="input font-mono"
+              placeholder="e.g. sin(x) * x"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Function expression"
+            />
+          </div>
+          <div id="errorMsg" role="alert" aria-live="polite"></div>
+        </div>
+
+        <button id="addFnBtn" class="btn btn-primary w-full justify-center" aria-label="Add function to graph">
+          <span>＋</span> Add Function
+        </button>
+
+        <!-- Presets -->
+        <div>
+          <p class="text-xs font-semibold mb-2" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Quick presets</p>
+          <div class="flex flex-wrap gap-2" id="presetBtns">
+            <button class="badge badge-indigo" style="cursor:pointer;" data-preset="sin(x)">sin(x)</button>
+            <button class="badge badge-indigo" style="cursor:pointer;" data-preset="cos(x)">cos(x)</button>
+            <button class="badge badge-purple" style="cursor:pointer;" data-preset="x^2">x²</button>
+            <button class="badge badge-purple" style="cursor:pointer;" data-preset="x^3 - 3*x">x³−3x</button>
+            <button class="badge badge-cyan" style="cursor:pointer;" data-preset="sqrt(abs(x))">√|x|</button>
+            <button class="badge badge-cyan" style="cursor:pointer;" data-preset="log(x)">log(x)</button>
+          </div>
+        </div>
+
+        <hr class="divider" style="margin:0;" />
+
+        <!-- Active Functions List -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold" style="color:var(--text-secondary);">Active Functions</p>
+            <button id="clearAllBtn" class="text-xs" style="color:#ef4444;background:none;border:none;cursor:pointer;" aria-label="Clear all functions">Clear all</button>
+          </div>
+          <div id="fnList" class="flex flex-col gap-2" role="list" aria-label="Active function list">
+            <p id="fnEmpty" class="text-xs" style="color:var(--text-muted);">No functions added yet.</p>
+          </div>
+        </div>
+
+        <hr class="divider" style="margin:0;" />
+
+        <!-- Zoom & Reset Controls -->
+        <div>
+          <p class="text-xs font-semibold mb-2" style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">View Controls</p>
+          <div class="flex gap-2 flex-wrap">
+            <button id="zoomInBtn"  class="zoom-btn" title="Zoom In"  aria-label="Zoom in">＋</button>
+            <button id="zoomOutBtn" class="zoom-btn" title="Zoom Out" aria-label="Zoom out">－</button>
+            <button id="resetViewBtn" class="btn btn-secondary" style="font-size:0.78rem;padding:0.4rem 0.8rem;" aria-label="Reset view">Reset view</button>
+          </div>
+
+          <div class="mt-3">
+            <label for="resolutionRange" class="text-xs" style="color:var(--text-muted);">
+              Resolution: <span id="resolutionVal">2</span> px/sample
+            </label>
+            <input id="resolutionRange" type="range" min="1" max="6" value="2" class="w-full mt-1" aria-label="Graph resolution" />
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Panel: Canvas -->
+      <div class="flex-1 flex flex-col gap-3">
+        <div class="canvas-wrapper" id="canvasWrapper" role="img" aria-label="Function graph canvas">
+          <canvas id="graphCanvas"></canvas>
+          <div class="crosshair-label" id="coordLabel"></div>
+        </div>
+
+        <!-- Legend under canvas on mobile -->
+        <div class="glass-card p-3 text-xs" style="color:var(--text-muted);">
+          <strong style="color:var(--text-secondary);">Tips:</strong>
+          Mouse drag to pan · Scroll wheel to zoom · Expressions use math.js syntax (e.g. <code class="font-mono">sin(x)</code>, <code class="font-mono">x^2</code>, <code class="font-mono">log(x)</code>, <code class="font-mono">pi</code>, <code class="font-mono">e</code>)
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    // ─── Constants ────────────────────────────────────────────────
+    const COLORS = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ef4444', '#e879f9'];
+    const ZOOM_FACTOR = 1.25;
+    const DEFAULT_VIEW = { xMin: -10, xMax: 10, yMin: -7, yMax: 7 };
+
+    // ─── State ────────────────────────────────────────────────────
+    /** @type {{ id: number, expr: string, compiledFn: Function, color: string }[]} */
+    let functions = [];
+    let nextId = 0;
+    let view = { ...DEFAULT_VIEW };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let dragView = null;
+    let resolution = 2;
+
+    // ─── DOM refs ─────────────────────────────────────────────────
+    const canvas   = /** @type {HTMLCanvasElement} */ (document.getElementById('graphCanvas'));
+    const ctx      = canvas.getContext('2d');
+    const fnInput  = /** @type {HTMLInputElement} */  (document.getElementById('fnInput'));
+    const fnList   = document.getElementById('fnList');
+    const fnEmpty  = document.getElementById('fnEmpty');
+    const errorMsg = document.getElementById('errorMsg');
+    const coordLabel = document.getElementById('coordLabel');
+    const wrapper  = document.getElementById('canvasWrapper');
+
+    // ─── Resize observer ──────────────────────────────────────────
+    function resizeCanvas() {
+      canvas.width  = wrapper.clientWidth;
+      canvas.height = wrapper.clientHeight;
+      draw();
+    }
+
+    const ro = new ResizeObserver(resizeCanvas);
+    ro.observe(wrapper);
+
+    // ─── Coordinate transforms ────────────────────────────────────
+    function mathToCanvas(mx, my) {
+      const W = canvas.width, H = canvas.height;
+      const { xMin, xMax, yMin, yMax } = view;
+      return {
+        cx: ((mx - xMin) / (xMax - xMin)) * W,
+        cy: H - ((my - yMin) / (yMax - yMin)) * H,
+      };
+    }
+
+    function canvasToMath(cx, cy) {
+      const W = canvas.width, H = canvas.height;
+      const { xMin, xMax, yMin, yMax } = view;
+      return {
+        mx: xMin + (cx / W) * (xMax - xMin),
+        my: yMin + ((H - cy) / H) * (yMax - yMin),
+      };
+    }
+
+    // ─── Drawing ──────────────────────────────────────────────────
+    function draw() {
+      const W = canvas.width, H = canvas.height;
+      if (!W || !H) return;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Background
+      ctx.fillStyle = '#050d1a';
+      ctx.fillRect(0, 0, W, H);
+
+      drawGrid(W, H);
+      drawAxes(W, H);
+
+      functions.forEach(fn => drawFunction(fn, W, H));
+    }
+
+    function niceStep(range, targetTicks) {
+      const rough = range / targetTicks;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(rough)));
+      const normalized = rough / magnitude;
+      let nice;
+      if (normalized < 1.5) nice = 1;
+      else if (normalized < 3.5) nice = 2;
+      else if (normalized < 7.5) nice = 5;
+      else nice = 10;
+      return nice * magnitude;
+    }
+
+    function drawGrid(W, H) {
+      const { xMin, xMax, yMin, yMax } = view;
+      const stepX = niceStep(xMax - xMin, 10);
+      const stepY = niceStep(yMax - yMin, 8);
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(99,102,241,0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+
+      // Vertical grid lines + x labels
+      const startX = Math.ceil(xMin / stepX) * stepX;
+      ctx.fillStyle = 'rgba(148,163,184,0.55)';
+      ctx.font = `${Math.max(10, Math.min(13, W / 60))}px JetBrains Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      for (let x = startX; x <= xMax + 1e-9; x += stepX) {
+        const { cx } = mathToCanvas(x, 0);
+        ctx.beginPath();
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, H);
+        ctx.stroke();
+        if (Math.abs(x) > stepX * 0.01) {
+          const label = parseFloat(x.toFixed(10)).toString();
+          ctx.fillText(label, cx, mathToCanvas(0, 0).cy + 4);
+        }
+      }
+
+      // Horizontal grid lines + y labels
+      const startY = Math.ceil(yMin / stepY) * stepY;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      for (let y = startY; y <= yMax + 1e-9; y += stepY) {
+        const { cy } = mathToCanvas(0, y);
+        ctx.beginPath();
+        ctx.moveTo(0, cy);
+        ctx.lineTo(W, cy);
+        ctx.stroke();
+        if (Math.abs(y) > stepY * 0.01) {
+          const label = parseFloat(y.toFixed(10)).toString();
+          ctx.fillText(label, mathToCanvas(0, 0).cx - 6, cy);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function drawAxes(W, H) {
+      const { cx: ox, cy: oy } = mathToCanvas(0, 0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+
+      // x-axis
+      ctx.beginPath();
+      ctx.moveTo(0, oy);
+      ctx.lineTo(W, oy);
+      ctx.stroke();
+
+      // y-axis
+      ctx.beginPath();
+      ctx.moveTo(ox, 0);
+      ctx.lineTo(ox, H);
+      ctx.stroke();
+
+      // Arrowheads
+      ctx.fillStyle = 'rgba(148,163,184,0.5)';
+      // Right arrow (x)
+      ctx.beginPath();
+      ctx.moveTo(W - 1, oy);
+      ctx.lineTo(W - 10, oy - 5);
+      ctx.lineTo(W - 10, oy + 5);
+      ctx.fill();
+      // Top arrow (y)
+      ctx.beginPath();
+      ctx.moveTo(ox, 1);
+      ctx.lineTo(ox - 5, 11);
+      ctx.lineTo(ox + 5, 11);
+      ctx.fill();
+
+      // Axis labels
+      ctx.fillStyle = 'rgba(148,163,184,0.8)';
+      ctx.font = 'bold 13px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('x', W - 8, oy - 14);
+      ctx.textAlign = 'center';
+      ctx.fillText('y', ox + 14, 8);
+
+      ctx.restore();
+    }
+
+    function drawFunction(fn, W, H) {
+      const { xMin, xMax } = view;
+      const steps = Math.ceil(W / resolution);
+      const dx = (xMax - xMin) / steps;
+
+      ctx.save();
+      ctx.strokeStyle = fn.color;
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.shadowColor = fn.color;
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+
+      let penDown = false;
+      let prevY = null;
+
+      for (let i = 0; i <= steps; i++) {
+        const mx = xMin + i * dx;
+        let my;
+        try {
+          my = fn.compiledFn({ x: mx });
+          if (typeof my !== 'number' || !isFinite(my)) { penDown = false; prevY = null; continue; }
+        } catch {
+          penDown = false; prevY = null; continue;
+        }
+
+        // Detect large vertical jumps (discontinuities like tan)
+        if (prevY !== null && Math.abs(my - prevY) > (view.yMax - view.yMin) * 2) {
+          penDown = false;
+        }
+        prevY = my;
+
+        const { cx, cy } = mathToCanvas(mx, my);
+        if (!penDown) {
+          ctx.moveTo(cx, cy);
+          penDown = true;
+        } else {
+          ctx.lineTo(cx, cy);
+        }
+      }
+
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ─── Function management ──────────────────────────────────────
+    function showError(msg) {
+      errorMsg.textContent = msg;
+    }
+
+    function clearError() {
+      errorMsg.textContent = '';
+    }
+
+    function addFunction(expr) {
+      expr = expr.trim();
+      if (!expr) { showError('Please enter a function expression.'); return; }
+      if (functions.length >= 6) { showError('Maximum 6 functions reached.'); return; }
+
+      // Test compilation
+      let compiled;
+      try {
+        compiled = math.compile(expr);
+        const testVal = compiled.evaluate({ x: 1 });
+        // allow complex results but prefer real ones
+        if (typeof testVal === 'object' && testVal.re !== undefined) {
+          // complex — fine, will handle in draw
+        }
+      } catch (e) {
+        showError(`Invalid expression: ${e.message}`);
+        return;
+      }
+
+      clearError();
+
+      const color = COLORS[functions.length % COLORS.length];
+      const id = nextId++;
+      const compiledFn = (scope) => {
+        try {
+          const result = compiled.evaluate(scope);
+          if (typeof result === 'object' && result.re !== undefined) return result.re;
+          return result;
+        } catch { return NaN; }
+      };
+
+      functions.push({ id, expr, compiledFn, color });
+      renderFnList();
+      draw();
+      fnInput.value = '';
+    }
+
+    function removeFunction(id) {
+      functions = functions.filter(f => f.id !== id);
+      renderFnList();
+      draw();
+    }
+
+    function renderFnList() {
+      const items = fnList.querySelectorAll('.fn-pill');
+      items.forEach(el => el.remove());
+      fnEmpty.style.display = functions.length ? 'none' : '';
+
+      functions.forEach(fn => {
+        const pill = document.createElement('div');
+        pill.className = 'fn-pill';
+        pill.setAttribute('role', 'listitem');
+        pill.innerHTML = `
+          <span class="fn-color-dot" style="background:${fn.color};" aria-hidden="true"></span>
+          <span class="fn-label">f(x) = ${fn.expr}</span>
+          <button class="fn-remove" data-id="${fn.id}" title="Remove function" aria-label="Remove function ${fn.expr}">✕</button>
+        `;
+        fnList.appendChild(pill);
+      });
+
+      fnList.querySelectorAll('.fn-remove').forEach(btn => {
+        btn.addEventListener('click', () => removeFunction(Number(btn.dataset.id)));
+      });
+    }
+
+    // ─── Zoom & Pan ───────────────────────────────────────────────
+    function zoomView(factor, centerMx, centerMy) {
+      const { xMin, xMax, yMin, yMax } = view;
+      const cx = centerMx ?? (xMin + xMax) / 2;
+      const cy = centerMy ?? (yMin + yMax) / 2;
+      view.xMin = cx + (xMin - cx) * factor;
+      view.xMax = cx + (xMax - cx) * factor;
+      view.yMin = cy + (yMin - cy) * factor;
+      view.yMax = cy + (yMax - cy) * factor;
+      draw();
+    }
+
+    function resetView() {
+      view = { ...DEFAULT_VIEW };
+      draw();
+    }
+
+    // Mouse / Touch pan
+    canvas.addEventListener('mousedown', e => {
+      isDragging = true;
+      dragStart = { x: e.clientX, y: e.clientY };
+      dragView = { ...view };
+    });
+
+    window.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const { mx, my } = canvasToMath(cx, cy);
+      coordLabel.textContent = `x = ${mx.toFixed(3)}, y = ${my.toFixed(3)}`;
+
+      if (!isDragging || !dragView) return;
+
+      const W = canvas.width, H = canvas.height;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      const xRange = dragView.xMax - dragView.xMin;
+      const yRange = dragView.yMax - dragView.yMin;
+
+      view.xMin = dragView.xMin - (dx / W) * xRange;
+      view.xMax = dragView.xMax - (dx / W) * xRange;
+      view.yMin = dragView.yMin + (dy / H) * yRange;
+      view.yMax = dragView.yMax + (dy / H) * yRange;
+      draw();
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    canvas.addEventListener('mouseleave', () => { coordLabel.textContent = ''; });
+
+    // Wheel zoom
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const { mx, my } = canvasToMath(cx, cy);
+      const factor = e.deltaY > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+      zoomView(factor, mx, my);
+    }, { passive: false });
+
+    // Touch pan support
+    let lastTouchDist = null;
+    let lastTouches = null;
+
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        isDragging = true;
+        dragStart = { x: t.clientX, y: t.clientY };
+        dragView = { ...view };
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        lastTouchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        lastTouches = e.touches;
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length === 1 && isDragging && dragView) {
+        const t = e.touches[0];
+        const W = canvas.width, H = canvas.height;
+        const dx = t.clientX - dragStart.x;
+        const dy = t.clientY - dragStart.y;
+        const xRange = dragView.xMax - dragView.xMin;
+        const yRange = dragView.yMax - dragView.yMin;
+        view.xMin = dragView.xMin - (dx / W) * xRange;
+        view.xMax = dragView.xMax - (dx / W) * xRange;
+        view.yMin = dragView.yMin + (dy / H) * yRange;
+        view.yMax = dragView.yMax + (dy / H) * yRange;
+        draw();
+      } else if (e.touches.length === 2 && lastTouchDist !== null) {
+        const newDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        zoomView(lastTouchDist / newDist);
+        lastTouchDist = newDist;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+      isDragging = false;
+      lastTouchDist = null;
+    });
+
+    // ─── UI Event Listeners ───────────────────────────────────────
+    document.getElementById('addFnBtn').addEventListener('click', () => addFunction(fnInput.value));
+
+    fnInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addFunction(fnInput.value);
+    });
+
+    fnInput.addEventListener('input', () => clearError());
+
+    document.getElementById('zoomInBtn').addEventListener('click',  () => zoomView(1 / ZOOM_FACTOR));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => zoomView(ZOOM_FACTOR));
+    document.getElementById('resetViewBtn').addEventListener('click', resetView);
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      functions = [];
+      renderFnList();
+      draw();
+    });
+
+    document.getElementById('resolutionRange').addEventListener('input', e => {
+      resolution = Number(e.target.value);
+      document.getElementById('resolutionVal').textContent = resolution;
+      draw();
+    });
+
+    document.getElementById('presetBtns').addEventListener('click', e => {
+      const btn = e.target.closest('[data-preset]');
+      if (btn) {
+        fnInput.value = btn.dataset.preset;
+        clearError();
+        fnInput.focus();
+      }
+    });
+
+    // ─── Bootstrap ────────────────────────────────────────────────
+    resizeCanvas();
+    // Default starter functions
+    addFunction('sin(x)');
+    addFunction('x^2 / 5');
+  </script>
+</body>
+</html>

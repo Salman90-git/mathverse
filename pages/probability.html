@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Probability Simulator · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* ── Tab system ───────────────────────────────── */
+    .sim-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      border: 1.5px solid var(--glass-border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+    .sim-tab:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-primary);
+    }
+    .sim-tab.active {
+      background: linear-gradient(135deg, rgba(168,85,247,0.25), rgba(6,182,212,0.15));
+      border-color: var(--accent-purple);
+      color: var(--text-primary);
+      box-shadow: 0 0 14px rgba(168,85,247,0.3);
+    }
+
+    /* ── Trial radio buttons ──────────────────────── */
+    .trial-radio { display: none; }
+    .trial-label {
+      display: inline-block;
+      padding: 0.4rem 1.1rem;
+      border-radius: 0.45rem;
+      border: 1.5px solid var(--glass-border);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .trial-radio:checked + .trial-label {
+      background: rgba(6,182,212,0.2);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(6,182,212,0.25);
+    }
+    .trial-label:hover {
+      border-color: var(--accent-cyan);
+      color: var(--text-primary);
+    }
+
+    /* ── Chart container ──────────────────────────── */
+    #chart-container {
+      position: relative;
+      width: 100%;
+      height: 320px;
+    }
+
+    /* ── Stat pill ────────────────────────────────── */
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.04);
+    }
+    .stat-pill .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── History entry ────────────────────────────── */
+    .history-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.5rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      font-size: 0.85rem;
+      animation: fadeSlide 0.3s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── LLN block ────────────────────────────────── */
+    #lln-block {
+      border-left: 3px solid var(--accent-purple);
+      padding: 0.85rem 1.1rem;
+      background: rgba(168,85,247,0.06);
+      border-radius: 0 0.5rem 0.5rem 0;
+      transition: all 0.3s ease;
+    }
+
+    /* ── Run button animation ─────────────────────── */
+    #run-btn.running {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    #run-btn.running::after {
+      content: '…';
+    }
+
+    /* ── Empty state ──────────────────────────────── */
+    #chart-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 320px;
+      gap: 0.75rem;
+      color: var(--text-muted);
+    }
+    #chart-placeholder .placeholder-icon {
+      font-size: 3rem;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- ── Hero ─────────────────────────────────────── -->
+    <section class="text-center mb-10" aria-labelledby="page-heading">
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <span style="font-size:2.5rem;" aria-hidden="true">🎲</span>
+        <h1 id="page-heading" class="section-title mb-0">
+          Probability <span class="gradient-text">Simulator</span>
+        </h1>
+      </div>
+      <p class="section-subtitle max-w-2xl mx-auto">
+        Run random experiments and watch observed frequencies converge to
+        theoretical probabilities — the Law of Large Numbers in action.
+      </p>
+    </section>
+
+    <!-- ── Main grid ─────────────────────────────────── -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- ── Left: Controls ─────────────────────────── -->
+      <aside class="lg:col-span-1 glass-card p-6 flex flex-col gap-6"
+             aria-label="Simulation controls">
+
+        <!-- Simulation type tabs -->
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-3">
+            Experiment
+          </h2>
+          <div role="tablist" aria-label="Simulation type" class="flex flex-wrap gap-2">
+            <button role="tab" class="sim-tab active" data-sim="dice"
+                    aria-selected="true" aria-controls="chart-panel" id="tab-dice">
+              🎲 Dice
+            </button>
+            <button role="tab" class="sim-tab" data-sim="coin"
+                    aria-selected="false" aria-controls="chart-panel" id="tab-coin">
+              🪙 Coin
+            </button>
+            <button role="tab" class="sim-tab" data-sim="cards"
+                    aria-selected="false" aria-controls="chart-panel" id="tab-cards">
+              🃏 Cards
+            </button>
+          </div>
+        </div>
+
+        <!-- Trial count -->
+        <div>
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-3">
+            Number of Trials
+          </h2>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Trial count">
+            <input type="radio" name="trials" id="t10"   value="10"   class="trial-radio" />
+            <label for="t10"   class="trial-label">10</label>
+
+            <input type="radio" name="trials" id="t100"  value="100"  class="trial-radio" checked />
+            <label for="t100"  class="trial-label">100</label>
+
+            <input type="radio" name="trials" id="t1000" value="1000" class="trial-radio" />
+            <label for="t1000" class="trial-label">1000</label>
+          </div>
+        </div>
+
+        <!-- Description card (updates per tab) -->
+        <div id="sim-description" class="text-sm text-[var(--text-secondary)] leading-relaxed p-3
+             rounded-lg bg-[rgba(255,255,255,0.04)] border border-[var(--glass-border)]">
+          Roll a fair 6-sided die <em>n</em> times. Each face (1–6) has a
+          theoretical probability of <strong>1/6 ≈ 16.67%</strong>.
+        </div>
+
+        <!-- Run button -->
+        <button id="run-btn" class="btn btn-primary w-full text-base py-3"
+                aria-live="polite">
+          ▶ Run Simulation
+        </button>
+
+        <!-- Quick stats (hidden until first run) -->
+        <div id="quick-stats" class="hidden" aria-live="polite" aria-label="Quick statistics">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2">
+            Last Run Stats
+          </h2>
+          <div id="stats-pills" class="flex flex-wrap gap-2"></div>
+        </div>
+      </aside>
+
+      <!-- ── Right: Chart + LLN + History ───────────── -->
+      <section class="lg:col-span-2 flex flex-col gap-6" aria-label="Results">
+
+        <!-- Chart card -->
+        <div class="glass-card p-6" role="region" aria-label="Distribution chart" id="chart-panel">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 class="text-lg font-bold text-[var(--text-primary)]" id="chart-title">
+              Observed vs Theoretical
+            </h2>
+            <!-- Legend pills -->
+            <div class="flex gap-3">
+              <span class="stat-pill">
+                <span class="dot" style="background:#a855f7;"></span>Observed
+              </span>
+              <span class="stat-pill">
+                <span class="dot" style="background:#06b6d4; border: 1px dashed #06b6d4;"></span>Theoretical
+              </span>
+            </div>
+          </div>
+
+          <!-- Placeholder shown before first run -->
+          <div id="chart-placeholder" aria-label="No data yet">
+            <span class="placeholder-icon" aria-hidden="true">📊</span>
+            <p class="text-sm">Run a simulation to see the chart</p>
+          </div>
+
+          <!-- Actual chart (hidden initially) -->
+          <div id="chart-container" class="hidden" aria-hidden="true">
+            <canvas id="prob-chart" aria-label="Probability distribution bar chart" role="img"></canvas>
+          </div>
+        </div>
+
+        <!-- Law of Large Numbers explainer -->
+        <div class="glass-card p-6" aria-live="polite" aria-label="Law of Large Numbers">
+          <h2 class="text-base font-bold mb-3 text-[var(--text-primary)]">
+            📐 Law of Large Numbers
+          </h2>
+          <div id="lln-block">
+            <p id="lln-text" class="text-sm text-[var(--text-secondary)] leading-relaxed">
+              The <strong>Law of Large Numbers</strong> states that as the number of trials
+              increases, the observed (sample) frequency of an event will converge to its
+              true theoretical probability. Run a simulation above to see this in action!
+            </p>
+          </div>
+        </div>
+
+        <!-- Simulation history -->
+        <div class="glass-card p-6" aria-label="Simulation history">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold text-[var(--text-primary)]">🕑 History</h2>
+            <button id="clear-history" class="btn btn-secondary text-xs py-1 px-3"
+                    aria-label="Clear simulation history">
+              Clear
+            </button>
+          </div>
+          <div id="history-list" class="flex flex-col gap-2"
+               aria-live="polite" aria-label="Recent simulations">
+            <p id="history-empty" class="text-sm text-[var(--text-muted)] text-center py-4">
+              No simulations run yet.
+            </p>
+          </div>
+        </div>
+
+      </section>
+    </div><!-- /main grid -->
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    /* ══════════════════════════════════════════════════════════
+       Probability Simulator – inline logic
+       ══════════════════════════════════════════════════════════ */
+
+    // ── State ──────────────────────────────────────────────────
+    let currentSim = 'dice';
+    /** @type {Chart|null} */
+    let chart = null;
+    /** @type {Array<{sim:string, trials:number, observed:number[], labels:string[], theoretical:number[], ts:Date}>} */
+    const history = [];
+    const MAX_HISTORY = 5;
+
+    // ── DOM refs ───────────────────────────────────────────────
+    const runBtn         = /** @type {HTMLButtonElement} */ (document.getElementById('run-btn'));
+    const tabs           = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.sim-tab'));
+    const simDesc        = document.getElementById('sim-description');
+    const chartTitle     = document.getElementById('chart-title');
+    const chartContainer = document.getElementById('chart-container');
+    const chartPlaceholder = document.getElementById('chart-placeholder');
+    const canvas         = /** @type {HTMLCanvasElement} */ (document.getElementById('prob-chart'));
+    const llnText        = document.getElementById('lln-text');
+    const historyList    = document.getElementById('history-list');
+    const historyEmpty   = document.getElementById('history-empty');
+    const clearHistBtn   = document.getElementById('clear-history');
+    const quickStats     = document.getElementById('quick-stats');
+    const statsPills     = document.getElementById('stats-pills');
+
+    // ── Sim metadata ───────────────────────────────────────────
+    const SIM_META = {
+      dice: {
+        label: '🎲 Dice Roll',
+        description: `Roll a fair 6-sided die <em>n</em> times. Each face (1–6) has a
+          theoretical probability of <strong>1/6 ≈ 16.67%</strong>.`,
+        labels: ['1', '2', '3', '4', '5', '6'],
+        outcomes: 6,
+        chartTitle: 'Dice Roll Distribution',
+        /**
+         * @param {number} n
+         * @returns {number[]}
+         */
+        simulate(n) {
+          const counts = new Array(6).fill(0);
+          for (let i = 0; i < n; i++) counts[Math.floor(Math.random() * 6)]++;
+          return counts;
+        },
+        /**
+         * @param {number} n
+         * @returns {number[]}
+         */
+        theoretical(n) {
+          return new Array(6).fill(n / 6);
+        },
+      },
+
+      coin: {
+        label: '🪙 Coin Flip',
+        description: `Flip a fair coin <em>n</em> times. Each outcome (Heads / Tails) has a
+          theoretical probability of <strong>1/2 = 50%</strong>.`,
+        labels: ['Heads', 'Tails'],
+        outcomes: 2,
+        chartTitle: 'Coin Flip Distribution',
+        simulate(n) {
+          const counts = [0, 0];
+          for (let i = 0; i < n; i++) counts[Math.floor(Math.random() * 2)]++;
+          return counts;
+        },
+        theoretical(n) {
+          return [n / 2, n / 2];
+        },
+      },
+
+      cards: {
+        label: '🃏 Card Draw',
+        description: `Draw a card at random (with replacement) from a standard 52-card deck <em>n</em>
+          times. Each suit has a theoretical probability of <strong>1/4 = 25%</strong>.`,
+        labels: ['♠ Spades', '♥ Hearts', '♦ Diamonds', '♣ Clubs'],
+        outcomes: 4,
+        chartTitle: 'Card Suit Distribution',
+        simulate(n) {
+          const counts = [0, 0, 0, 0];
+          for (let i = 0; i < n; i++) counts[Math.floor(Math.random() * 4)]++;
+          return counts;
+        },
+        theoretical(n) {
+          return new Array(4).fill(n / 4);
+        },
+      },
+    };
+
+    // ── Tab switching ──────────────────────────────────────────
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        currentSim = /** @type {string} */ (tab.dataset.sim);
+        const meta = SIM_META[currentSim];
+        if (simDesc) simDesc.innerHTML = meta.description;
+        if (chartTitle) chartTitle.textContent = meta.chartTitle;
+      });
+    });
+
+    // ── Get selected trial count ───────────────────────────────
+    function getTrials() {
+      const checked = /** @type {HTMLInputElement|null} */ (
+        document.querySelector('input[name="trials"]:checked')
+      );
+      return checked ? parseInt(checked.value, 10) : 100;
+    }
+
+    // ── Run simulation ─────────────────────────────────────────
+    runBtn?.addEventListener('click', () => {
+      runBtn.classList.add('running');
+      runBtn.textContent = '⏳ Running';
+
+      // Slight delay so the UI flickers to give feedback
+      requestAnimationFrame(() => setTimeout(runSimulation, 60));
+    });
+
+    function runSimulation() {
+      const meta    = SIM_META[currentSim];
+      const n       = getTrials();
+      const observed    = meta.simulate(n);
+      const theoretical = meta.theoretical(n);
+
+      // Render chart
+      renderChart(meta.labels, observed, theoretical, n);
+
+      // Update LLN text
+      updateLLN(currentSim, n, observed, theoretical);
+
+      // Update quick stats
+      updateStats(meta.labels, observed, n);
+
+      // Push to history
+      pushHistory({ sim: currentSim, trials: n, observed, labels: meta.labels, theoretical, ts: new Date() });
+
+      // Re-enable button
+      runBtn.classList.remove('running');
+      runBtn.textContent = '▶ Run Simulation';
+    }
+
+    // ── Chart rendering ────────────────────────────────────────
+    /**
+     * @param {string[]}  labels
+     * @param {number[]}  observed
+     * @param {number[]}  theoretical
+     * @param {number}    n
+     */
+    function renderChart(labels, observed, theoretical, n) {
+      // Show canvas, hide placeholder
+      chartPlaceholder?.classList.add('hidden');
+      chartContainer?.classList.remove('hidden');
+      chartContainer?.removeAttribute('aria-hidden');
+
+      const ctx = canvas.getContext('2d');
+
+      // Round theoretical to 2dp for tooltip clarity
+      const theoryRounded = theoretical.map(v => parseFloat(v.toFixed(2)));
+
+      if (chart) {
+        // Update existing chart
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = observed;
+        chart.data.datasets[1].data = theoryRounded;
+        chart.update('active');
+        return;
+      }
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Observed',
+              data: observed,
+              backgroundColor: 'rgba(168, 85, 247, 0.65)',
+              borderColor: 'rgba(168, 85, 247, 1)',
+              borderWidth: 1.5,
+              borderRadius: 4,
+            },
+            {
+              label: 'Theoretical',
+              data: theoryRounded,
+              backgroundColor: 'rgba(6, 182, 212, 0.25)',
+              borderColor: 'rgba(6, 182, 212, 1)',
+              borderWidth: 2,
+              borderDash: [6, 3],
+              borderRadius: 4,
+              type: 'bar',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 500, easing: 'easeOutQuart' },
+          plugins: {
+            legend: { display: false }, // We have custom legend pills
+            tooltip: {
+              backgroundColor: 'rgba(15,23,42,0.92)',
+              borderColor: 'rgba(99,102,241,0.5)',
+              borderWidth: 1,
+              titleColor: '#f1f5f9',
+              bodyColor: '#94a3b8',
+              padding: 10,
+              callbacks: {
+                label(ctx) {
+                  const val = ctx.parsed.y;
+                  const pct = ((val / n) * 100).toFixed(1);
+                  return ` ${ctx.dataset.label}: ${val} (${pct}%)`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94a3b8', font: { family: 'Inter', size: 12 } },
+              grid: { color: 'rgba(99,102,241,0.1)' },
+              border: { color: 'rgba(99,102,241,0.2)' },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#94a3b8',
+                font: { family: 'Inter', size: 12 },
+                callback: v => Number.isInteger(v) ? v : '',
+              },
+              grid: { color: 'rgba(99,102,241,0.1)' },
+              border: { color: 'rgba(99,102,241,0.2)' },
+            },
+          },
+        },
+      });
+    }
+
+    // ── Law of Large Numbers explainer ────────────────────────
+    /**
+     * @param {string}   sim
+     * @param {number}   n
+     * @param {number[]} observed
+     * @param {number[]} theoretical
+     */
+    function updateLLN(sim, n, observed, theoretical) {
+      if (!llnText) return;
+
+      // Compute max absolute deviation as % of n
+      const deviations = observed.map((o, i) => Math.abs(o - theoretical[i]) / n * 100);
+      const maxDev = Math.max(...deviations).toFixed(1);
+      const avgDev = (deviations.reduce((a, b) => a + b, 0) / deviations.length).toFixed(1);
+
+      let convergenceVerdict = '';
+      const maxDevNum = parseFloat(maxDev);
+      if (n >= 1000) {
+        convergenceVerdict = maxDevNum < 3
+          ? `🟢 <strong>Excellent convergence!</strong> With ${n} trials, the observed frequencies are nearly identical to theoretical values.`
+          : `🟡 Even at ${n} trials, some variance remains — randomness is unpredictable in the short term.`;
+      } else if (n >= 100) {
+        convergenceVerdict = maxDevNum < 8
+          ? `🟡 <strong>Good convergence</strong> at ${n} trials. Increase to 1,000 to see even tighter results.`
+          : `🔴 <strong>High variance</strong> at ${n} trials. The Law of Large Numbers needs more trials to kick in.`;
+      } else {
+        convergenceVerdict = `🔴 <strong>High variance expected</strong> at only ${n} trials. Random noise dominates at small sample sizes.`;
+      }
+
+      const simName = SIM_META[sim].label;
+      llnText.innerHTML = `
+        <strong>Law of Large Numbers — ${simName} · ${n} trials</strong><br>
+        <span class="text-[var(--text-secondary)] mt-1 block">
+          Max deviation from theory: <strong style="color:var(--accent-cyan)">${maxDev}%</strong> &nbsp;|&nbsp;
+          Avg deviation: <strong style="color:var(--accent-purple)">${avgDev}%</strong>
+        </span>
+        <span class="text-[var(--text-secondary)] mt-2 block">${convergenceVerdict}</span>
+        <span class="text-xs text-[var(--text-muted)] mt-2 block">
+          As trials → ∞, observed frequency → true probability. This is the foundation of all probability theory.
+        </span>
+      `;
+    }
+
+    // ── Quick stats pills ──────────────────────────────────────
+    /**
+     * @param {string[]} labels
+     * @param {number[]} observed
+     * @param {number}   n
+     */
+    function updateStats(labels, observed, n) {
+      if (!quickStats || !statsPills) return;
+
+      quickStats.classList.remove('hidden');
+      const maxVal = Math.max(...observed);
+      const maxIdx = observed.indexOf(maxVal);
+      const minVal = Math.min(...observed);
+      const minIdx = observed.indexOf(minVal);
+
+      statsPills.innerHTML = `
+        <span class="stat-pill">
+          <span class="dot" style="background:#a855f7"></span>
+          Most: <strong style="color:var(--accent-purple);margin-left:0.2rem">${labels[maxIdx]}</strong>
+          &nbsp;<span style="color:var(--text-muted)">(${maxVal})</span>
+        </span>
+        <span class="stat-pill">
+          <span class="dot" style="background:#06b6d4"></span>
+          Least: <strong style="color:var(--accent-cyan);margin-left:0.2rem">${labels[minIdx]}</strong>
+          &nbsp;<span style="color:var(--text-muted)">(${minVal})</span>
+        </span>
+        <span class="stat-pill">
+          <span class="dot" style="background:#6366f1"></span>
+          Trials: <strong style="color:#818cf8;margin-left:0.2rem">${n}</strong>
+        </span>
+      `;
+    }
+
+    // ── Simulation history ─────────────────────────────────────
+    /**
+     * @param {{sim:string, trials:number, observed:number[], labels:string[], theoretical:number[], ts:Date}} entry
+     */
+    function pushHistory(entry) {
+      history.unshift(entry);
+      if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (!historyList) return;
+
+      // Remove all entries (keep the empty notice in place)
+      const existing = historyList.querySelectorAll('.history-entry');
+      existing.forEach(el => el.remove());
+
+      if (history.length === 0) {
+        historyEmpty?.classList.remove('hidden');
+        return;
+      }
+
+      historyEmpty?.classList.add('hidden');
+
+      history.forEach((entry, idx) => {
+        const meta = SIM_META[entry.sim];
+        const deviations = entry.observed.map((o, i) => Math.abs(o - entry.theoretical[i]) / entry.trials * 100);
+        const avgDev = (deviations.reduce((a, b) => a + b, 0) / deviations.length).toFixed(1);
+        const timeStr = entry.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const badge = idx === 0 ? '<span class="badge ml-1">Latest</span>' : '';
+
+        const div = document.createElement('div');
+        div.className = 'history-entry';
+        div.setAttribute('aria-label', `Simulation ${history.length - idx}: ${meta.label}, ${entry.trials} trials`);
+        div.innerHTML = `
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-[var(--text-primary)]">${meta.label}</span>
+            ${badge}
+          </div>
+          <div class="flex items-center gap-4 text-[var(--text-muted)]">
+            <span>${entry.trials} trials</span>
+            <span title="Average deviation from theory">Δ avg: <strong style="color:var(--accent-cyan)">${avgDev}%</strong></span>
+            <span class="hidden sm:inline font-mono text-xs">${timeStr}</span>
+          </div>
+        `;
+        historyList.appendChild(div);
+      });
+    }
+
+    // ── Clear history ──────────────────────────────────────────
+    clearHistBtn?.addEventListener('click', () => {
+      history.length = 0;
+      renderHistory();
+    });
+
+    // ── Initial description setup ──────────────────────────────
+    if (simDesc) simDesc.innerHTML = SIM_META.dice.description;
+  </script>
+</body>
+</html>

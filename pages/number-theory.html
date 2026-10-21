@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Number Theory · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .sieve-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+    .sieve-num {
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; font-size: 0.75rem; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(168,85,247,0.2); color: var(--accent-purple);
+      border: 1px solid rgba(168,85,247,0.3);
+      transition: background 0.3s, color 0.3s;
+    }
+    .sieve-num.composite {
+      background: rgba(100,116,139,0.15); color: var(--text-muted);
+      border-color: rgba(100,116,139,0.2); text-decoration: line-through;
+    }
+    .sieve-num.prime {
+      background: rgba(6,182,212,0.2); color: var(--accent-cyan);
+      border-color: rgba(6,182,212,0.4);
+    }
+    .sieve-num.current {
+      background: rgba(245,158,11,0.3); color: #f59e0b;
+      border-color: rgba(245,158,11,0.5);
+    }
+    .factor-badge {
+      display: inline-flex; align-items: baseline; gap: 1px;
+      padding: 0.25rem 0.75rem; border-radius: 9999px;
+      background: rgba(168,85,247,0.18); color: var(--accent-purple);
+      border: 1px solid rgba(168,85,247,0.35);
+      font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700;
+    }
+    .factor-badge sup { font-size: 0.6em; }
+    .factor-op { color: var(--text-muted); font-size: 1.1rem; font-weight: 400; }
+    .fib-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0.3rem 0.7rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(6,182,212,0.15); color: var(--accent-cyan);
+      border: 1px solid rgba(6,182,212,0.3);
+    }
+    .collatz-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0.25rem 0.55rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(168,85,247,0.15); color: var(--accent-purple);
+      border: 1px solid rgba(168,85,247,0.25);
+    }
+    .step-chain { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.8; }
+    .step-chain .eq { color: var(--text-muted); }
+    .step-chain .val { color: var(--accent-cyan); }
+    .result-box {
+      padding: 0.75rem 1.25rem; border-radius: 10px;
+      background: rgba(6,182,212,0.07); border: 1px solid rgba(6,182,212,0.2);
+    }
+    .result-box.purple {
+      background: rgba(168,85,247,0.07); border-color: rgba(168,85,247,0.2);
+    }
+    .phi-bar-wrap { height: 8px; border-radius: 4px; background: rgba(100,116,139,0.2); overflow: hidden; }
+    .phi-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); transition: width 0.4s; }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Page Header -->
+    <section class="text-center mb-12">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
+           style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3)">
+        <span style="color:var(--accent-purple)">∞</span>
+        <span class="text-sm font-medium" style="color:var(--accent-purple)">Number Theory</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-4">
+        <span class="gradient-text">Explore the Beauty</span><br>of Numbers
+      </h1>
+      <p class="section-subtitle max-w-2xl mx-auto">
+        Dive into primes, sequences, and the elegant patterns hidden within the integers.
+        Interact with classic algorithms and visualize mathematical structures in real time.
+      </p>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 1: Prime Checker                                  -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="prime-checker-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(168,85,247,0.2);color:var(--accent-purple)">①</div>
+        <h2 id="prime-checker-title" class="text-xl font-bold text-white">Prime Checker</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Enter a number to check whether it's prime, with a step-by-step trial-division explanation.
+      </p>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input id="prime-input" type="number" min="2" max="9999999" placeholder="e.g. 97"
+               class="input w-44" aria-label="Number to check for primality" />
+        <button id="prime-btn" class="btn btn-primary">Check</button>
+      </div>
+      <div id="prime-result" role="region" aria-live="polite" aria-label="Prime check result"></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 2: Sieve of Eratosthenes                         -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="sieve-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(6,182,212,0.2);color:var(--accent-cyan)">②</div>
+        <h2 id="sieve-title" class="text-xl font-bold text-white">Sieve of Eratosthenes</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Watch the sieve algorithm animate: it progressively crosses out multiples of each prime,
+        leaving only primes highlighted in <span style="color:var(--accent-cyan)">cyan</span>.
+      </p>
+      <div class="flex flex-wrap gap-3 mb-6">
+        <input id="sieve-input" type="number" min="4" max="200" placeholder="Limit (max 200)"
+               class="input w-48" aria-label="Upper limit for sieve" />
+        <button id="sieve-start-btn" class="btn btn-primary">Start Sieve</button>
+        <button id="sieve-stop-btn" class="btn btn-secondary" disabled>Stop</button>
+      </div>
+      <div id="sieve-status" class="text-sm mb-4" style="color:var(--text-muted)" aria-live="polite"></div>
+      <div id="sieve-grid" class="sieve-grid" role="grid" aria-label="Sieve of Eratosthenes grid"></div>
+      <div id="sieve-summary" class="mt-5 result-box hidden" role="region" aria-live="polite"></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 3: GCD & LCM                                     -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="gcd-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(168,85,247,0.2);color:var(--accent-purple)">③</div>
+        <h2 id="gcd-title" class="text-xl font-bold text-white">GCD &amp; LCM</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Compute the Greatest Common Divisor with Euclid's algorithm and derive the Least Common Multiple.
+      </p>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input id="gcd-a" type="number" min="1" max="999999" placeholder="First number"
+               class="input w-44" aria-label="First number for GCD" />
+        <input id="gcd-b" type="number" min="1" max="999999" placeholder="Second number"
+               class="input w-44" aria-label="Second number for GCD" />
+        <button id="gcd-btn" class="btn btn-primary">Calculate</button>
+      </div>
+      <div id="gcd-result" role="region" aria-live="polite" aria-label="GCD and LCM result"></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 4: Fibonacci Generator                           -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="fib-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(6,182,212,0.2);color:var(--accent-cyan)">④</div>
+        <h2 id="fib-title" class="text-xl font-bold text-white">Fibonacci Generator</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Generate the first <em>n</em> Fibonacci numbers and watch consecutive ratios converge
+        toward the Golden Ratio φ ≈ 1.6180339…
+      </p>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input id="fib-input" type="number" min="2" max="50" placeholder="n (max 50)"
+               class="input w-44" aria-label="Number of Fibonacci terms" />
+        <button id="fib-btn" class="btn btn-primary">Generate</button>
+      </div>
+      <div id="fib-result" role="region" aria-live="polite" aria-label="Fibonacci sequence result"></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 5: Prime Factorization                           -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="factor-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(168,85,247,0.2);color:var(--accent-purple)">⑤</div>
+        <h2 id="factor-title" class="text-xl font-bold text-white">Prime Factorization</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Decompose any positive integer into its prime factors with exponent notation.
+      </p>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input id="factor-input" type="number" min="2" max="9999999" placeholder="e.g. 360"
+               class="input w-44" aria-label="Number to factorize" />
+        <button id="factor-btn" class="btn btn-primary">Factorize</button>
+      </div>
+      <div id="factor-result" role="region" aria-live="polite" aria-label="Prime factorization result"></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────────────────── -->
+    <!-- SECTION 6: Collatz Sequence                              -->
+    <!-- ───────────────────────────────────────────────────────── -->
+    <section aria-labelledby="collatz-title" class="glass-card mb-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+             style="background:rgba(6,182,212,0.2);color:var(--accent-cyan)">⑥</div>
+        <h2 id="collatz-title" class="text-xl font-bold text-white">Collatz Sequence</h2>
+      </div>
+      <p class="text-sm mb-5" style="color:var(--text-muted)">
+        Start with any positive integer. If even, divide by 2. If odd, multiply by 3 and add 1.
+        The famous conjecture states this always eventually reaches 1.
+      </p>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input id="collatz-input" type="number" min="1" max="999999" placeholder="Starting number"
+               class="input w-44" aria-label="Starting number for Collatz sequence" />
+        <button id="collatz-btn" class="btn btn-primary">Generate</button>
+      </div>
+      <div id="collatz-result" role="region" aria-live="polite" aria-label="Collatz sequence result"></div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    /* ================================================================
+       UTILITIES
+    ================================================================ */
+    function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+
+    function showError(containerId, msg) {
+      document.getElementById(containerId).innerHTML =
+        `<p class="text-sm" style="color:#f87171">${msg}</p>`;
+    }
+
+    /* ================================================================
+       SECTION 1 – PRIME CHECKER
+    ================================================================ */
+    (function initPrimeChecker() {
+      const input  = document.getElementById('prime-input');
+      const btn    = document.getElementById('prime-btn');
+      const result = document.getElementById('prime-result');
+
+      function checkPrime() {
+        const raw = input.value.trim();
+        if (!raw) { showError('prime-result', 'Please enter a number.'); return; }
+        const n = parseInt(raw, 10);
+        if (isNaN(n) || n < 2) { showError('prime-result', 'Please enter an integer ≥ 2.'); return; }
+
+        // Trial division
+        const steps = [];
+        let factor = null;
+        for (let d = 2; d <= Math.floor(Math.sqrt(n)); d++) {
+          steps.push(d);
+          if (n % d === 0) { factor = d; break; }
+        }
+
+        if (factor === null) {
+          // Prime
+          const triedStr = steps.length
+            ? `Tested divisors 2 through ${steps[steps.length - 1]} — none divided evenly.`
+            : `${n} is less than 4, trivially prime.`;
+          result.innerHTML = `
+            <div class="result-box flex flex-col gap-2">
+              <p class="text-base font-bold" style="color:var(--accent-cyan)">
+                ✓ ${n} is <span style="color:var(--accent-cyan)">prime</span>
+              </p>
+              <p class="text-sm step-chain" style="color:var(--text-muted)">${triedStr}</p>
+            </div>`;
+        } else {
+          // Composite
+          const checkedStr = steps.map(d => `${n} ÷ ${d} = ${(n/d).toFixed(2)}`).join(' &nbsp;·&nbsp; ');
+          result.innerHTML = `
+            <div class="result-box purple flex flex-col gap-2">
+              <p class="text-base font-bold" style="color:#f87171">
+                ✗ ${n} is <span style="color:#f87171">not prime</span>
+              </p>
+              <p class="text-sm" style="color:var(--text-muted)">
+                It is divisible by <strong style="color:var(--accent-purple)">${factor}</strong>:
+                &nbsp;${n} ÷ ${factor} = ${n / factor}
+              </p>
+              <p class="text-xs font-mono" style="color:var(--text-muted)">${checkedStr}</p>
+            </div>`;
+        }
+      }
+
+      btn.addEventListener('click', checkPrime);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') checkPrime(); });
+    })();
+
+    /* ================================================================
+       SECTION 2 – SIEVE OF ERATOSTHENES
+    ================================================================ */
+    (function initSieve() {
+      const input     = document.getElementById('sieve-input');
+      const startBtn  = document.getElementById('sieve-start-btn');
+      const stopBtn   = document.getElementById('sieve-stop-btn');
+      const grid      = document.getElementById('sieve-grid');
+      const status    = document.getElementById('sieve-status');
+      const summary   = document.getElementById('sieve-summary');
+      let intervalId  = null;
+      let cells       = [];
+
+      function buildGrid(limit) {
+        grid.innerHTML = '';
+        cells = [];
+        for (let i = 2; i <= limit; i++) {
+          const div = document.createElement('div');
+          div.className = 'sieve-num';
+          div.textContent = i;
+          div.setAttribute('role', 'gridcell');
+          div.setAttribute('aria-label', `${i}`);
+          div.dataset.num = i;
+          grid.appendChild(div);
+          cells[i] = div;
+        }
+      }
+
+      function runSieve() {
+        const raw = input.value.trim();
+        if (!raw) { showError('sieve-status', 'Please enter a limit.'); return; }
+        const limit = clamp(parseInt(raw, 10), 4, 200);
+        if (isNaN(limit)) { showError('sieve-status', 'Invalid input.'); return; }
+        input.value = limit;
+
+        if (intervalId) clearInterval(intervalId);
+        summary.classList.add('hidden');
+        buildGrid(limit);
+
+        const isComposite = new Array(limit + 1).fill(false);
+        isComposite[0] = isComposite[1] = true;
+        let p = 2;
+
+        startBtn.disabled = true;
+        stopBtn.disabled  = false;
+        status.textContent = `Sieving… current prime: ${p}`;
+
+        // Mark cells[p] as current
+        cells[p].classList.add('current');
+
+        intervalId = setInterval(() => {
+          // Remove current highlight from p
+          cells[p].classList.remove('current');
+          cells[p].classList.add('prime');
+
+          // Mark multiples of p
+          for (let m = p * p; m <= limit; m += p) {
+            if (!isComposite[m]) {
+              isComposite[m] = true;
+              cells[m].classList.add('composite');
+            }
+          }
+          // Mark numbers 2..p-1 already crossed as composite (for display of 1-based skips)
+          // Find next prime
+          let next = p + 1;
+          while (next <= limit && isComposite[next]) next++;
+
+          if (next > limit) {
+            // Done — highlight remaining unmarked as prime
+            for (let i = 2; i <= limit; i++) {
+              if (!isComposite[i]) cells[i].classList.add('prime');
+            }
+            clearInterval(intervalId);
+            intervalId = null;
+            startBtn.disabled = false;
+            stopBtn.disabled  = true;
+            status.textContent = 'Sieve complete!';
+            const primes = [];
+            for (let i = 2; i <= limit; i++) if (!isComposite[i]) primes.push(i);
+            summary.classList.remove('hidden');
+            summary.innerHTML = `
+              <p class="text-sm font-semibold mb-1" style="color:var(--accent-cyan)">
+                Found <strong>${primes.length}</strong> primes up to ${limit}
+              </p>
+              <p class="text-xs font-mono" style="color:var(--text-muted)">${primes.join(', ')}</p>`;
+            return;
+          }
+
+          p = next;
+          cells[p].classList.add('current');
+          status.textContent = `Sieving… current prime: ${p}`;
+        }, 400);
+      }
+
+      function stopSieve() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        startBtn.disabled = false;
+        stopBtn.disabled  = true;
+        status.textContent = 'Sieve paused.';
+      }
+
+      startBtn.addEventListener('click', runSieve);
+      stopBtn.addEventListener('click', stopSieve);
+    })();
+
+    /* ================================================================
+       SECTION 3 – GCD & LCM
+    ================================================================ */
+    (function initGcdLcm() {
+      const aInput = document.getElementById('gcd-a');
+      const bInput = document.getElementById('gcd-b');
+      const btn    = document.getElementById('gcd-btn');
+      const result = document.getElementById('gcd-result');
+
+      function gcdSteps(a, b) {
+        const steps = [];
+        let x = a, y = b;
+        while (y !== 0) {
+          steps.push({ x, y, r: x % y });
+          [x, y] = [y, x % y];
+        }
+        return { gcd: x, steps };
+      }
+
+      function calculate() {
+        const a = parseInt(aInput.value, 10);
+        const b = parseInt(bInput.value, 10);
+        if (isNaN(a) || isNaN(b) || a < 1 || b < 1) {
+          showError('gcd-result', 'Please enter two positive integers.');
+          return;
+        }
+
+        const { gcd, steps } = gcdSteps(a, b);
+        const lcm = (a / gcd) * b;
+
+        // Build step chain: gcd(48,18) = gcd(18,12) = ... = 6
+        let chainParts = [];
+        chainParts.push(`<span class="val">gcd(${a}, ${b})</span>`);
+        for (let i = 0; i < steps.length; i++) {
+          const s = steps[i];
+          if (s.r === 0) {
+            chainParts.push(`<span class="val">${s.y}</span>`);
+          } else {
+            chainParts.push(`<span class="val">gcd(${s.y}, ${s.r})</span>`);
+          }
+        }
+        const chain = chainParts.join(' <span class="eq">=</span> ');
+
+        result.innerHTML = `
+          <div class="flex flex-col gap-4">
+            <div class="result-box">
+              <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--text-muted)">Euclidean Steps</p>
+              <div class="step-chain">${chain}</div>
+              <div class="mt-3 flex flex-col gap-1">
+                ${steps.map(s =>
+                  `<div class="text-xs font-mono" style="color:var(--text-muted)">
+                    ${s.x} = ${Math.floor(s.x/s.y)} × ${s.y} + ${s.r}
+                   </div>`
+                ).join('')}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-4">
+              <div class="result-box flex-1 min-w-32">
+                <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--text-muted)">GCD</p>
+                <p class="text-2xl font-extrabold font-mono" style="color:var(--accent-cyan)">
+                  gcd(${a}, ${b}) = ${gcd}
+                </p>
+              </div>
+              <div class="result-box purple flex-1 min-w-32">
+                <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--text-muted)">LCM</p>
+                <p class="text-2xl font-extrabold font-mono" style="color:var(--accent-purple)">
+                  lcm(${a}, ${b}) = ${lcm}
+                </p>
+                <p class="text-xs mt-1 font-mono" style="color:var(--text-muted)">
+                  = (${a} × ${b}) / ${gcd}
+                </p>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      btn.addEventListener('click', calculate);
+      [aInput, bInput].forEach(el => el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') calculate();
+      }));
+    })();
+
+    /* ================================================================
+       SECTION 4 – FIBONACCI GENERATOR
+    ================================================================ */
+    (function initFibonacci() {
+      const input  = document.getElementById('fib-input');
+      const btn    = document.getElementById('fib-btn');
+      const result = document.getElementById('fib-result');
+      const PHI    = (1 + Math.sqrt(5)) / 2;
+
+      function generate() {
+        const raw = input.value.trim();
+        if (!raw) { showError('fib-result', 'Please enter n.'); return; }
+        const n = clamp(parseInt(raw, 10), 2, 50);
+        if (isNaN(n)) { showError('fib-result', 'Invalid input.'); return; }
+        input.value = n;
+
+        // Generate sequence (BigInt for large values)
+        const seq = [1n, 1n];
+        for (let i = 2; i < n; i++) seq.push(seq[i-1] + seq[i-2]);
+
+        // Badges
+        const badges = seq.map((v, i) => {
+          const hue = Math.round((i / (n - 1)) * 60 + 170); // cyan-ish gradient
+          return `<span class="fib-badge" style="
+            background:hsla(${hue},80%,60%,0.12);
+            color:hsla(${hue},80%,70%,1);
+            border-color:hsla(${hue},80%,60%,0.3)">${v.toString()}</span>`;
+        }).join(' ');
+
+        // Ratios (use regular numbers; BigInt for display only)
+        const seqNum = seq.map(v => Number(v));
+        const ratios = seqNum.slice(1).map((v, i) => ({
+          ratio: v / seqNum[i],
+          a: seqNum[i],
+          b: v,
+        }));
+
+        // Last few ratios to show convergence
+        const showRatios = ratios.slice(-Math.min(6, ratios.length));
+
+        const ratioRows = showRatios.map(r => {
+          const pct = Math.min((r.ratio / PHI) * 100, 100);
+          const diff = Math.abs(r.ratio - PHI);
+          return `
+            <div class="flex items-center gap-3">
+              <span class="font-mono text-xs w-28 shrink-0" style="color:var(--text-muted)">
+                ${r.b} / ${r.a} = <strong style="color:var(--accent-cyan)">${r.ratio.toFixed(8)}</strong>
+              </span>
+              <div class="phi-bar-wrap flex-1">
+                <div class="phi-bar-fill" style="width:${pct}%"></div>
+              </div>
+              <span class="text-xs font-mono w-24 shrink-0 text-right" style="color:var(--text-muted)">
+                Δ ${diff.toExponential(2)}
+              </span>
+            </div>`;
+        }).join('');
+
+        result.innerHTML = `
+          <div class="flex flex-col gap-5">
+            <div>
+              <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--text-muted)">
+                First ${n} Fibonacci Numbers
+              </p>
+              <div class="flex flex-wrap gap-2">${badges}</div>
+            </div>
+            <div class="result-box">
+              <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--text-muted)">
+                Convergence to φ = ${PHI.toFixed(8)}…
+              </p>
+              <div class="flex flex-col gap-2">${ratioRows}</div>
+              <p class="text-xs mt-3 font-mono" style="color:var(--text-muted)">
+                Latest ratio: <strong style="color:var(--accent-cyan)">${ratios[ratios.length-1].ratio.toFixed(10)}</strong>
+                &nbsp;(φ = ${PHI.toFixed(10)})
+              </p>
+            </div>
+          </div>`;
+      }
+
+      btn.addEventListener('click', generate);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+    })();
+
+    /* ================================================================
+       SECTION 5 – PRIME FACTORIZATION
+    ================================================================ */
+    (function initFactorization() {
+      const input  = document.getElementById('factor-input');
+      const btn    = document.getElementById('factor-btn');
+      const result = document.getElementById('factor-result');
+
+      function factorize() {
+        const raw = input.value.trim();
+        if (!raw) { showError('factor-result', 'Please enter a number.'); return; }
+        let n = parseInt(raw, 10);
+        if (isNaN(n) || n < 2) { showError('factor-result', 'Please enter an integer ≥ 2.'); return; }
+
+        const original = n;
+        const factors = new Map(); // prime -> exponent
+        for (let d = 2; d * d <= n; d++) {
+          while (n % d === 0) {
+            factors.set(d, (factors.get(d) || 0) + 1);
+            n = Math.floor(n / d);
+          }
+        }
+        if (n > 1) factors.set(n, (factors.get(n) || 0) + 1);
+
+        // Build display
+        const parts = [];
+        const badgeHtml = [];
+        factors.forEach((exp, prime) => {
+          parts.push(exp === 1 ? `${prime}` : `${prime}^${exp}`);
+          badgeHtml.push(`
+            <span class="factor-badge">
+              ${prime}${exp > 1 ? `<sup>${exp}</sup>` : ''}
+            </span>`);
+        });
+
+        const isP = factors.size === 1 && factors.values().next().value === 1;
+
+        result.innerHTML = `
+          <div class="result-box purple">
+            <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--text-muted)">Prime Factorization</p>
+            <div class="flex flex-wrap items-center gap-2 text-lg font-bold mb-3">
+              <span class="font-mono" style="color:var(--text-muted)">${original}</span>
+              <span class="factor-op">=</span>
+              ${badgeHtml.join('<span class="factor-op mx-1">×</span>')}
+            </div>
+            <p class="text-xs font-mono" style="color:var(--text-muted)">
+              ${original} = ${parts.join(' × ')}
+              ${isP ? ' &nbsp;(already prime)' : ''}
+            </p>
+            <p class="text-xs mt-1 font-mono" style="color:var(--text-muted)">
+              Number of distinct prime factors: <strong style="color:var(--accent-purple)">${factors.size}</strong>
+              &nbsp;|&nbsp; Total prime factors (with multiplicity):
+              <strong style="color:var(--accent-purple)">${[...factors.values()].reduce((a,b)=>a+b,0)}</strong>
+            </p>
+          </div>`;
+      }
+
+      btn.addEventListener('click', factorize);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') factorize(); });
+    })();
+
+    /* ================================================================
+       SECTION 6 – COLLATZ SEQUENCE
+    ================================================================ */
+    (function initCollatz() {
+      const input  = document.getElementById('collatz-input');
+      const btn    = document.getElementById('collatz-btn');
+      const result = document.getElementById('collatz-result');
+      let chart    = null;
+
+      function generate() {
+        const raw = input.value.trim();
+        if (!raw) { showError('collatz-result', 'Please enter a starting number.'); return; }
+        const start = parseInt(raw, 10);
+        if (isNaN(start) || start < 1) {
+          showError('collatz-result', 'Please enter a positive integer.');
+          return;
+        }
+
+        // Build sequence
+        const seq = [start];
+        let cur = start;
+        while (cur !== 1) {
+          cur = cur % 2 === 0 ? cur / 2 : 3 * cur + 1;
+          seq.push(cur);
+          if (seq.length > 100000) break; // safety guard
+        }
+
+        const maxVal = Math.max(...seq);
+        const len    = seq.length;
+
+        // Badges (show up to 80, then ellipsis)
+        const showSeq = seq.length > 80 ? [...seq.slice(0, 40), null, ...seq.slice(-10)] : seq;
+        const badgeHtml = showSeq.map(v =>
+          v === null
+            ? `<span class="collatz-badge" style="color:var(--text-muted)">…</span>`
+            : `<span class="collatz-badge">${v}</span>`
+        ).join(' ');
+
+        result.innerHTML = `
+          <div class="flex flex-col gap-5">
+            <div class="flex flex-wrap gap-4">
+              <div class="result-box flex-1 min-w-36">
+                <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--text-muted)">Sequence Length</p>
+                <p class="text-3xl font-extrabold font-mono" style="color:var(--accent-cyan)">${len}</p>
+                <p class="text-xs mt-1" style="color:var(--text-muted)">steps to reach 1</p>
+              </div>
+              <div class="result-box purple flex-1 min-w-36">
+                <p class="text-xs uppercase tracking-widest mb-1" style="color:var(--text-muted)">Maximum Value</p>
+                <p class="text-3xl font-extrabold font-mono" style="color:var(--accent-purple)">${maxVal.toLocaleString()}</p>
+                <p class="text-xs mt-1" style="color:var(--text-muted)">peak reached</p>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--text-muted)">Sequence</p>
+              <div class="flex flex-wrap gap-1.5">${badgeHtml}</div>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--text-muted)">Trajectory</p>
+              <div class="glass-card" style="padding:1rem;background:rgba(15,23,42,0.6)">
+                <canvas id="collatz-chart" aria-label="Collatz sequence line chart" role="img"
+                        style="max-height:280px"></canvas>
+              </div>
+            </div>
+          </div>`;
+
+        // Chart
+        if (chart) { chart.destroy(); chart = null; }
+        const ctx = document.getElementById('collatz-chart').getContext('2d');
+
+        // Downsample for chart if very long
+        let chartSeq = seq;
+        if (seq.length > 600) {
+          const factor = Math.ceil(seq.length / 600);
+          chartSeq = seq.filter((_, i) => i % factor === 0);
+          if (chartSeq[chartSeq.length - 1] !== 1) chartSeq.push(1);
+        }
+
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: chartSeq.map((_, i) => i),
+            datasets: [{
+              label: 'Collatz value',
+              data: chartSeq,
+              borderColor: 'rgba(6,182,212,0.9)',
+              backgroundColor: 'rgba(6,182,212,0.08)',
+              pointRadius: chartSeq.length > 100 ? 0 : 2,
+              pointHoverRadius: 4,
+              fill: true,
+              tension: 0.3,
+              borderWidth: 2,
+            }],
+          },
+          options: {
+            responsive: true,
+            animation: { duration: 600 },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(15,23,42,0.9)',
+                borderColor: 'rgba(6,182,212,0.3)',
+                borderWidth: 1,
+                titleColor: '#94a3b8',
+                bodyColor: '#06b6d4',
+                callbacks: {
+                  title: items => `Step ${items[0].label}`,
+                  label: item => `Value: ${item.raw}`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(148,163,184,0.07)' },
+                ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 11 } },
+                title: { display: true, text: 'Step', color: '#64748b', font: { size: 12 } },
+              },
+              y: {
+                grid: { color: 'rgba(148,163,184,0.07)' },
+                ticks: { color: '#64748b', font: { size: 11 } },
+                title: { display: true, text: 'Value', color: '#64748b', font: { size: 12 } },
+              },
+            },
+          },
+        });
+      }
+
+      btn.addEventListener('click', generate);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+    })();
+  </script>
+</body>
+</html>

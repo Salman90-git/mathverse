@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matrix Calculator · MathVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .matrix-cell {
+      width: 70px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--glass-border);
+      border-radius: 6px;
+      padding: 0.4rem;
+      color: var(--text-primary);
+      outline: none;
+    }
+    .matrix-cell:focus {
+      border-color: var(--accent-indigo);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    }
+    .light-theme .matrix-cell {
+      background: rgba(241, 245, 249, 0.8);
+    }
+    .step-block {
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 3px solid var(--accent-indigo);
+      padding: 0.75rem 1rem;
+      border-radius: 0 8px 8px 0;
+      margin: 0.5rem 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .matrix-bracket {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bracket-left,
+    .bracket-right {
+      font-size: 3rem;
+      line-height: 1;
+      color: var(--accent-indigo);
+      font-weight: 100;
+      user-select: none;
+    }
+    .result-cell {
+      width: 80px;
+      text-align: center;
+      padding: 0.4rem 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 6px;
+      color: var(--text-primary);
+    }
+    .op-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--text-primary);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .op-btn:hover {
+      background: rgba(99, 102, 241, 0.28);
+      border-color: var(--accent-indigo);
+      transform: translateY(-1px);
+    }
+    .op-btn:active {
+      transform: translateY(0);
+    }
+    .size-radio {
+      display: none;
+    }
+    .size-label {
+      padding: 0.35rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .size-radio:checked + .size-label {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: var(--accent-indigo);
+      color: var(--text-primary);
+    }
+    .error-panel {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      color: #f87171;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .scalar-result {
+      font-size: 2rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #steps-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+    #steps-panel.open {
+      max-height: 9999px;
+    }
+  </style>
+</head>
+<body class="page-wrapper">
+  <main id="main-content" class="page-content">
+
+    <!-- Hero -->
+    <section class="text-center mb-10" aria-labelledby="page-title">
+      <div class="inline-flex items-center gap-2 badge mb-4">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Linear Algebra
+      </div>
+      <h1 id="page-title" class="section-title gradient-text">Matrix Calculator</h1>
+      <p class="section-subtitle">Add, subtract, multiply matrices and compute determinants, inverses, and transposes — with full step-by-step working.</p>
+    </section>
+
+    <!-- Size Selector -->
+    <section class="glass-card p-5 mb-6" aria-labelledby="size-label-heading">
+      <div class="flex flex-wrap items-center gap-4">
+        <span id="size-label-heading" class="text-sm font-semibold" style="color:var(--text-secondary)">Matrix Size:</span>
+        <div class="flex gap-2" role="radiogroup" aria-labelledby="size-label-heading">
+          <input type="radio" name="matsize" id="sz2" value="2" class="size-radio" checked />
+          <label for="sz2" class="size-label">2×2</label>
+          <input type="radio" name="matsize" id="sz3" value="3" class="size-radio" />
+          <label for="sz3" class="size-label">3×3</label>
+          <input type="radio" name="matsize" id="sz4" value="4" class="size-radio" />
+          <label for="sz4" class="size-label">4×4</label>
+        </div>
+        <button id="btn-clear" class="op-btn ml-auto" aria-label="Clear all matrix inputs" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.35);color:#f87171;">
+          ✕ Clear All
+        </button>
+      </div>
+    </section>
+
+    <!-- Matrix Inputs -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" aria-label="Matrix inputs">
+
+      <!-- Matrix A -->
+      <div class="glass-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-lg gradient-text">Matrix A</h2>
+          <button class="op-btn text-xs" onclick="fillRandom('A')" aria-label="Fill Matrix A with random values">🎲 Random</button>
+        </div>
+        <div id="grid-A" class="flex flex-col gap-2" aria-label="Matrix A grid" role="group"></div>
+      </div>
+
+      <!-- Matrix B -->
+      <div class="glass-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-lg gradient-text">Matrix B</h2>
+          <button class="op-btn text-xs" onclick="fillRandom('B')" aria-label="Fill Matrix B with random values">🎲 Random</button>
+        </div>
+        <div id="grid-B" class="flex flex-col gap-2" aria-label="Matrix B grid" role="group"></div>
+      </div>
+    </section>
+
+    <!-- Operation Buttons -->
+    <section class="glass-card p-5 mb-6" aria-label="Matrix operations">
+      <h2 class="text-sm font-semibold mb-3" style="color:var(--text-secondary)">Operations</h2>
+      <div class="flex flex-wrap gap-3">
+        <button class="op-btn" onclick="runOp('add')"         aria-label="Add Matrix A and Matrix B">➕ Add (A+B)</button>
+        <button class="op-btn" onclick="runOp('subtract')"    aria-label="Subtract Matrix B from Matrix A">➖ Subtract (A−B)</button>
+        <button class="op-btn" onclick="runOp('multiply')"    aria-label="Multiply Matrix A by Matrix B">✖ Multiply (A×B)</button>
+        <button class="op-btn" onclick="runOp('transpose')"   aria-label="Transpose Matrix A">⟳ Transpose A</button>
+        <button class="op-btn" onclick="runOp('determinant')" aria-label="Compute determinant of Matrix A">det(A)</button>
+        <button class="op-btn" onclick="runOp('inverse')"     aria-label="Compute inverse of Matrix A">A⁻¹ Inverse A</button>
+      </div>
+    </section>
+
+    <!-- Result Panel -->
+    <section id="result-section" class="glass-card p-5 mb-4 hidden" aria-live="polite" aria-label="Calculation result">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h2 class="font-bold text-lg" style="color:var(--text-primary)">
+          Result: <span id="result-label" class="gradient-text font-mono text-base"></span>
+        </h2>
+        <button id="btn-toggle-steps" class="op-btn text-xs" aria-expanded="false" aria-controls="steps-panel">
+          📋 Show Steps
+        </button>
+      </div>
+
+      <div id="result-output" class="mb-4"></div>
+
+      <!-- Steps Panel -->
+      <div id="steps-panel" role="region" aria-label="Step by step working">
+        <div class="border-t pt-4" style="border-color:var(--glass-border)">
+          <h3 class="text-sm font-semibold mb-3" style="color:var(--text-secondary)">Step-by-Step Working</h3>
+          <div id="steps-content"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import '../js/main.js';
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    let currentSize = 2;
+
+    // ─── Matrix Math ─────────────────────────────────────────────────────────
+
+    /** Get n×n submatrix by removing `row` and `col` (0-indexed) */
+    function minor(A, row, col) {
+      return A
+        .filter((_, r) => r !== row)
+        .map(rowArr => rowArr.filter((_, c) => c !== col));
+    }
+
+    /** Recursive determinant via cofactor expansion along first row */
+    function det(A) {
+      const n = A.length;
+      if (n === 1) return A[0][0];
+      if (n === 2) return A[0][0] * A[1][1] - A[0][1] * A[1][0];
+      let result = 0;
+      for (let c = 0; c < n; c++) {
+        result += Math.pow(-1, c) * A[0][c] * det(minor(A, 0, c));
+      }
+      return result;
+    }
+
+    /** Full cofactor matrix */
+    function cofactorMatrix(A) {
+      const n = A.length;
+      return A.map((row, r) =>
+        row.map((_, c) => Math.pow(-1, r + c) * det(minor(A, r, c)))
+      );
+    }
+
+    /** Transpose a matrix */
+    function transpose(A) {
+      const rows = A.length, cols = A[0].length;
+      return Array.from({ length: cols }, (_, c) =>
+        Array.from({ length: rows }, (_, r) => A[r][c])
+      );
+    }
+
+    /** Add two same-size matrices */
+    function add(A, B) {
+      return A.map((row, r) => row.map((v, c) => v + B[r][c]));
+    }
+
+    /** Subtract B from A (same size) */
+    function subtract(A, B) {
+      return A.map((row, r) => row.map((v, c) => v - B[r][c]));
+    }
+
+    /** Multiply A (m×k) by B (k×n) */
+    function multiply(A, B) {
+      const m = A.length, k = A[0].length, n = B[0].length;
+      return Array.from({ length: m }, (_, r) =>
+        Array.from({ length: n }, (_, c) =>
+          A[r].reduce((sum, _, t) => sum + A[r][t] * B[t][c], 0)
+        )
+      );
+    }
+
+    /** Inverse of square matrix using adjugate/determinant method */
+    function inverse(A) {
+      const d = det(A);
+      if (Math.abs(d) < 1e-10) return null; // singular
+      const adj = transpose(cofactorMatrix(A));
+      return adj.map(row => row.map(v => v / d));
+    }
+
+    // ─── DOM Helpers ─────────────────────────────────────────────────────────
+
+    function getCellId(mat, r, c) {
+      return `cell-${mat}-${r}-${c}`;
+    }
+
+    function buildGrid(mat, n) {
+      const container = document.getElementById(`grid-${mat}`);
+      container.innerHTML = '';
+      for (let r = 0; r < n; r++) {
+        const row = document.createElement('div');
+        row.className = 'flex gap-2';
+        for (let c = 0; c < n; c++) {
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.id = getCellId(mat, r, c);
+          inp.className = 'matrix-cell';
+          inp.value = '0';
+          inp.setAttribute('aria-label', `Matrix ${mat} row ${r + 1} column ${c + 1}`);
+          inp.setAttribute('step', 'any');
+          row.appendChild(inp);
+        }
+        container.appendChild(row);
+      }
+    }
+
+    function readMatrix(mat) {
+      const n = currentSize;
+      return Array.from({ length: n }, (_, r) =>
+        Array.from({ length: n }, (_, c) => {
+          const v = parseFloat(document.getElementById(getCellId(mat, r, c)).value);
+          return isNaN(v) ? 0 : v;
+        })
+      );
+    }
+
+    // ─── Grid Rendering ──────────────────────────────────────────────────────
+
+    function renderGrids(n) {
+      buildGrid('A', n);
+      buildGrid('B', n);
+    }
+
+    // ─── Fill Random ─────────────────────────────────────────────────────────
+
+    window.fillRandom = function(mat) {
+      const n = currentSize;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const v = Math.floor(Math.random() * 19) - 9; // −9 to 9
+          document.getElementById(getCellId(mat, r, c)).value = v;
+        }
+      }
+    };
+
+    // ─── Number Formatting ────────────────────────────────────────────────────
+
+    function fmt(v) {
+      if (Number.isInteger(v)) return String(v);
+      // Round to 4 sig figs to avoid float noise
+      const r = parseFloat(v.toPrecision(6));
+      return String(r);
+    }
+
+    // ─── Result Rendering ─────────────────────────────────────────────────────
+
+    function showError(msg) {
+      const sec = document.getElementById('result-section');
+      sec.classList.remove('hidden');
+      document.getElementById('result-output').innerHTML =
+        `<div class="error-panel" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          ${msg}
+        </div>`;
+      document.getElementById('steps-content').innerHTML = '';
+      closeSteps();
+    }
+
+    function showMatrix(label, mat, steps) {
+      document.getElementById('result-label').textContent = label;
+      const sec = document.getElementById('result-section');
+      sec.classList.remove('hidden');
+
+      const rows = mat.length, cols = mat[0].length;
+      let html = '<div class="matrix-bracket">';
+      html += '<span class="bracket-left">[</span>';
+      html += '<div class="flex flex-col gap-1">';
+      for (let r = 0; r < rows; r++) {
+        html += '<div class="flex gap-2">';
+        for (let c = 0; c < cols; c++) {
+          html += `<div class="result-cell">${fmt(mat[r][c])}</div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<span class="bracket-right">]</span>';
+      html += '</div>';
+
+      document.getElementById('result-output').innerHTML = html;
+      renderSteps(steps);
+    }
+
+    function showScalar(label, value, steps) {
+      document.getElementById('result-label').textContent = label;
+      const sec = document.getElementById('result-section');
+      sec.classList.remove('hidden');
+      document.getElementById('result-output').innerHTML =
+        `<div class="scalar-result">${fmt(value)}</div>`;
+      renderSteps(steps);
+    }
+
+    function renderSteps(steps) {
+      const el = document.getElementById('steps-content');
+      if (!steps || steps.length === 0) {
+        el.innerHTML = '';
+        document.getElementById('btn-toggle-steps').style.display = 'none';
+        return;
+      }
+      document.getElementById('btn-toggle-steps').style.display = '';
+      el.innerHTML = steps.map(s => `<div class="step-block">${escapeHtml(s)}</div>`).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function closeSteps() {
+      const panel = document.getElementById('steps-panel');
+      const btn = document.getElementById('btn-toggle-steps');
+      panel.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.textContent = '📋 Show Steps';
+    }
+
+    // ─── Step Generation ─────────────────────────────────────────────────────
+
+    function multiplySteps(A, B) {
+      const m = A.length, k = A[0].length, n = B[0].length;
+      const steps = [];
+      steps.push(`Multiply ${m}×${k} by ${k}×${n} matrix → result is ${m}×${n}`);
+      for (let r = 0; r < m; r++) {
+        for (let c = 0; c < n; c++) {
+          const terms = A[r].map((v, t) => `${fmt(v)} × ${fmt(B[t][c])}`).join(' + ');
+          const value = A[r].reduce((sum, _, t) => sum + A[r][t] * B[t][c], 0);
+          steps.push(`C[${r + 1}][${c + 1}] = Row${r + 1}(A) · Col${c + 1}(B)\n  = ${terms}\n  = ${fmt(value)}`);
+        }
+      }
+      return steps;
+    }
+
+    function detSteps2x2(A) {
+      const steps = [];
+      steps.push(
+        `det(A) = ad − bc\n` +
+        `  a=${fmt(A[0][0])}, b=${fmt(A[0][1])}, c=${fmt(A[1][0])}, d=${fmt(A[1][1])}\n` +
+        `  = (${fmt(A[0][0])} × ${fmt(A[1][1])}) − (${fmt(A[0][1])} × ${fmt(A[1][0])})\n` +
+        `  = ${fmt(A[0][0] * A[1][1])} − ${fmt(A[0][1] * A[1][0])}\n` +
+        `  = ${fmt(det(A))}`
+      );
+      return steps;
+    }
+
+    function detStepsNx(A) {
+      const n = A.length;
+      const steps = [];
+      steps.push(`Cofactor expansion along Row 1 of ${n}×${n} matrix:`);
+      let expr = '';
+      for (let c = 0; c < n; c++) {
+        const sign = Math.pow(-1, c);
+        const signStr = sign === 1 ? (c === 0 ? '' : '+ ') : '− ';
+        const elem = A[0][c];
+        const sub = minor(A, 0, c);
+        const subDet = det(sub);
+        const contribution = sign * elem * subDet;
+        const subStr = sub.map(r => '[' + r.map(fmt).join(', ') + ']').join(', ');
+        steps.push(
+          `Term [1,${c + 1}]: ${signStr}a₁${c + 1} × M₁${c + 1}\n` +
+          `  = ${signStr}${fmt(elem)} × det([${subStr}])\n` +
+          `  = ${fmt(elem)} × ${fmt(subDet)}\n` +
+          `  = ${fmt(contribution)}`
+        );
+        if (c > 0) expr += sign === 1 ? ' + ' : ' − ';
+        expr += fmt(Math.abs(contribution));
+      }
+      steps.push(`det(A) = ${expr}\n  = ${fmt(det(A))}`);
+      return steps;
+    }
+
+    function inverseSteps(A) {
+      const n = A.length;
+      const d = det(A);
+      const steps = [];
+      steps.push(`Step 1: Compute det(A)\n  det(A) = ${fmt(d)}`);
+
+      const cof = cofactorMatrix(A);
+      const cofStr = cof.map(r => '  [' + r.map(fmt).join(', ') + ']').join('\n');
+      steps.push(`Step 2: Cofactor matrix C:\n${cofStr}`);
+
+      const adj = transpose(cof);
+      const adjStr = adj.map(r => '  [' + r.map(fmt).join(', ') + ']').join('\n');
+      steps.push(`Step 3: Adjugate = transpose(C):\n${adjStr}`);
+
+      steps.push(
+        `Step 4: A⁻¹ = (1/det) × adj(A)\n` +
+        `  Divide each element of adj(A) by ${fmt(d)}`
+      );
+
+      const inv = inverse(A);
+      const invStr = inv.map(r => '  [' + r.map(fmt).join(', ') + ']').join('\n');
+      steps.push(`Result A⁻¹:\n${invStr}`);
+      return steps;
+    }
+
+    // ─── Main Operation Handler ───────────────────────────────────────────────
+
+    window.runOp = function(op) {
+      const A = readMatrix('A');
+      const B = readMatrix('B');
+      const n = currentSize;
+
+      switch (op) {
+        case 'add': {
+          const R = add(A, B);
+          showMatrix('A + B', R, [`Element-wise addition of corresponding entries.\nEach cell: C[i][j] = A[i][j] + B[i][j]`]);
+          break;
+        }
+        case 'subtract': {
+          const R = subtract(A, B);
+          showMatrix('A − B', R, [`Element-wise subtraction of corresponding entries.\nEach cell: C[i][j] = A[i][j] − B[i][j]`]);
+          break;
+        }
+        case 'multiply': {
+          const R = multiply(A, B);
+          showMatrix('A × B', R, multiplySteps(A, B));
+          break;
+        }
+        case 'transpose': {
+          const R = transpose(A);
+          showMatrix('Aᵀ', R, [`Transpose swaps rows and columns.\nAᵀ[i][j] = A[j][i]`]);
+          break;
+        }
+        case 'determinant': {
+          const d = det(A);
+          const steps = n === 2 ? detSteps2x2(A) : detStepsNx(A);
+          showScalar('det(A)', d, steps);
+          break;
+        }
+        case 'inverse': {
+          const d = det(A);
+          if (Math.abs(d) < 1e-10) {
+            showError('Matrix A is <strong>singular</strong> (det = 0). The inverse does not exist.');
+            document.getElementById('result-label').textContent = 'A⁻¹';
+            return;
+          }
+          const inv = inverse(A);
+          showMatrix('A⁻¹', inv, inverseSteps(A));
+          break;
+        }
+      }
+    };
+
+    // ─── Toggle Steps Panel ───────────────────────────────────────────────────
+
+    document.getElementById('btn-toggle-steps').addEventListener('click', () => {
+      const panel = document.getElementById('steps-panel');
+      const btn = document.getElementById('btn-toggle-steps');
+      const isOpen = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(isOpen));
+      btn.textContent = isOpen ? '📋 Hide Steps' : '📋 Show Steps';
+    });
+
+    // ─── Size Selector ────────────────────────────────────────────────────────
+
+    document.querySelectorAll('input[name="matsize"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        currentSize = parseInt(e.target.value, 10);
+        renderGrids(currentSize);
+        document.getElementById('result-section').classList.add('hidden');
+        closeSteps();
+      });
+    });
+
+    // ─── Clear All ────────────────────────────────────────────────────────────
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      const n = currentSize;
+      ['A', 'B'].forEach(mat => {
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            const el = document.getElementById(getCellId(mat, r, c));
+            if (el) el.value = '0';
+          }
+        }
+      });
+      document.getElementById('result-section').classList.add('hidden');
+      closeSteps();
+    });
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    renderGrids(currentSize);
+
+  </script>
+</body>
+</html>
